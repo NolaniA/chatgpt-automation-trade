@@ -5,6 +5,9 @@ from typing import List, Dict
 from pathlib import Path
 from datetime import datetime
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+OUTPUT_FOLDER = PROJECT_ROOT / "datas" / "data_files"
+
 
 @dataclass
 class MT5Config:
@@ -18,7 +21,7 @@ class MT5Config:
         mt5.TIMEFRAME_D1,
     ])
     bars: int = 100
-    save_folder: Path = Path("/chatgpt-analyse/data_files")
+    save_folder: Path = OUTPUT_FOLDER
 
 
 class MT5DataFeed:
@@ -99,8 +102,8 @@ class MT5DataFeed:
             filename = f"TF_{tf_name}.csv"
             file_path = self.save_path / filename
             df.to_csv(file_path, index=False)
-            # print(f"Saved: {file_path}")
-        # print(f"Saved: {self.save_path}")
+            # print_log(f"Saved: {file_path}")
+        # print_log(f"Saved: {self.save_path}")
 
     # ----------------------------
     def shutdown(self):
@@ -116,18 +119,18 @@ class MT5DataFeed:
             self.save_to_csv(data)
 
         except Exception as e:
-            print(f"fetch mt5 error: {e}")
+            print_log(f"fetch mt5 error: {e}")
 
         finally:
             self.shutdown()
 
 if __name__ == "__main__":
     config = MT5Config(
-        symbol="XAUUSDm",
+        symbol="XAUUSDc",
         timeframes=[
             mt5.TIMEFRAME_M1,
             mt5.TIMEFRAME_M15,
-            mt5.TIMEFRAME_H1
+            mt5.TIMEFRAME_H1,
         ],
         bars=100,
     )

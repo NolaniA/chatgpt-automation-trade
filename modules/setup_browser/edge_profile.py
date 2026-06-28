@@ -4,6 +4,8 @@ import time
 import urllib.request
 from pathlib import Path
 from typing import Literal
+from modules.utils.custom_print import print_log
+
 
 
 def find_edge_executable() -> Path | None:
@@ -18,6 +20,13 @@ def find_edge_executable() -> Path | None:
             return path
 
     return None
+
+def kill_edge_processes():
+    subprocess.run(
+        ["taskkill", "/F", "/IM", "msedge.exe"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
 
 def wait_for_cdp(debug_port: int = 9222, timeout: int = 10) -> bool:
@@ -61,11 +70,7 @@ def setup_edge_profile(
         raise ValueError("debug_port must be integer, example: 9222")
 
     # ปิด Edge ก่อน เพื่อกัน profile lock และกัน instance เดิมกิน port
-    subprocess.run(
-        ["taskkill", "/F", "/IM", "msedge.exe"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    kill_edge_processes()
 
     playwright_profile_folder.mkdir(parents=True, exist_ok=True)
 
@@ -90,12 +95,12 @@ def setup_edge_profile(
             raise FileNotFoundError(f"Source profile not found: {source_profile_path}")
 
         if target_profile_path.exists():
-            print(f"Target profile already exists: {target_profile_path}")
-            print("Skip clone.")
+            print_log(f"Target profile already exists: {target_profile_path}")
+            print_log("Skip clone.")
         else:
-            print("Cloning profile:")
-            print(f"FROM: {source_profile_path}")
-            print(f"TO:   {target_profile_path}")
+            print_log("Cloning profile:")
+            print_log(f"FROM: {source_profile_path}")
+            print_log(f"TO:   {target_profile_path}")
 
             shutil.copytree(
                 source_profile_path,
@@ -127,19 +132,18 @@ def setup_edge_profile(
         "--no-default-browser-check",
     ]
 
-    print("Starting Edge:")
-    print(" ".join(f'"{x}"' if " " in x else x for x in args))
+    print_log("Starting Edge:")
+    print_log(" ".join(f'"{x}"' if " " in x else x for x in args))
 
     process = subprocess.Popen(args)
 
     if wait_for_cdp(debug_port):
-        print(f"CDP ready: http://localhost:{debug_port}/json/version")
+        print_log(f"CDP ready: http://localhost:{debug_port}/json/version", end="\r")
     else:
-        print(f"Warning: CDP not ready on port {debug_port}")
+        print_log(f"Warning: CDP not ready on port {debug_port}", end="\r")
 
     return process
 
 if __name__ == "__main__":
     process = setup_edge_profile()
-    print(f"Edge process started with PID: {process.pid}")
-    
+    print_log(f"Edge process started with PID: {process.pid}")

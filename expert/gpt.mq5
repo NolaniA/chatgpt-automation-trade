@@ -35,7 +35,7 @@ int OnInit()
 void OnDeinit(const int reason)
   {
 //---
-   
+
   }
 //+------------------------------------------------------------------+
 //| Expert tick function                                             |
@@ -55,11 +55,11 @@ void OnTick()
 
 void  TrailingStop(double StopLoss = 200)
   {
-   
+
    double percentag_trailing       = PercentTrailing / 100;
    double percentag_start_trailing = StartPercentTrailing / 100;
-   
-   //double trailing_stop = Trailing * _Point; 
+
+   //double trailing_stop = Trailing * _Point;
 
    for(int i = PositionsTotal() - 1; i >= 0; i--)
      {
@@ -68,15 +68,15 @@ void  TrailingStop(double StopLoss = 200)
       double price_ask     = SymbolInfoDouble(ticket_symbol, SYMBOL_ASK);
       double price_bid     = SymbolInfoDouble(ticket_symbol, SYMBOL_BID);
       double Spread        = (price_ask-price_bid);
-      
+
       if(!MarketOpen(ticket_symbol))
          continue;
-      
-      
+
+
       //---focus position
       if(!PositionSelectByTicket(ticket))
          continue;
-      
+
 
       double stop_loss   = PositionGetDouble(POSITION_SL);
       double take_profit = PositionGetDouble(POSITION_TP);
@@ -84,7 +84,7 @@ void  TrailingStop(double StopLoss = 200)
       double price_open_position    = PositionGetDouble(POSITION_PRICE_OPEN);
       double price_open_spread_buy  = price_open_position + (Spread * 2);
       double price_open_spread_sell = price_open_position - (Spread * 2);
-      
+
 
       if (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY)
          {
@@ -94,89 +94,89 @@ void  TrailingStop(double StopLoss = 200)
             double price_start_percentage = price_open_position + percentag_start_trailing * tp_distance;
             // distance sl
             double   sl_distance          = take_profit - price_bid;
-            
+
             if (stop_loss == 0 && StopLoss != 0)   // auto set sl
             {
-               
+
                trade.PositionModify(ticket, price_bid - StopLoss*_Point, take_profit);
-               
+
             }
-            else if (price_bid > price_start_percentage && price_open_position > stop_loss) // set sl block 
+            else if (price_bid > price_start_percentage && price_open_position > stop_loss) // set sl block
             {
                trade.PositionModify(ticket, price_open_spread_buy, take_profit);
             }
             else if (price_bid > price_percentage && (price_bid - stop_loss) > sl_distance)   // trailing
 
             {
-               
+
                double new_stop_loss = price_bid - sl_distance;
                trade.PositionModify(ticket, new_stop_loss, take_profit);
             }
-            
+
 
          }
          else if (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL)
          {
-         
+
             double tp_distance            = price_open_position - take_profit;
             double price_percentage       = price_open_position - percentag_trailing * tp_distance;
             double price_start_percentage = price_open_position - percentag_start_trailing * tp_distance;
             // distance sl
             double   sl_distance          = price_ask - take_profit;
-         
-            
+
+
             if(stop_loss == 0 && StopLoss != 0)   // auto set sl+
             {
                trade.PositionModify(ticket, price_ask + StopLoss*_Point, take_profit);
             }
-            else if (price_ask < price_start_percentage && price_open_position < stop_loss) // set sl block 
+            else if (price_ask < price_start_percentage && price_open_position < stop_loss) // set sl block
             {
                trade.PositionModify(ticket, price_open_spread_sell, take_profit);
             }
-            else if (price_ask < price_percentage && (stop_loss - price_ask) > sl_distance)   // trailing 
+            else if (price_ask < price_percentage && (stop_loss - price_ask) > sl_distance)   // trailing
 
             {
                double new_stop_loss = price_ask + sl_distance;
                trade.PositionModify(ticket, new_stop_loss, take_profit);
             }
-            
-            
+
+
          }
-      
+
      }
   }
-  
+
 void ClosePositionTotalProfit(){
    // signal start
    if(CloseTotalProfit == 0) return;
-   
+
    // check total position
    if(PositionsTotal() < 2) return;
-   
+
    double equity  = AccountInfoDouble(ACCOUNT_EQUITY);
    double balance = AccountInfoDouble(ACCOUNT_BALANCE);
    double total_profit = equity - balance;
 
-   
+
    if(total_profit < CloseTotalProfit) return;
-   
+
    for(int i = PositionsTotal() - 1 ; i >= 0; i-- ){
       ulong  ticket        = PositionGetTicket(i);
       string ticket_symbol = PositionGetSymbol(i);
-      
+
       if(!MarketOpen(ticket_symbol))
          continue;
-      
+
       //---focus position
       if(!PositionSelectByTicket(ticket))
          continue;
-         
-      
-      
+
+
+
       if(trade.PositionClose(ticket)){
-         Print("Close position by total profile success");
+         print("Close position by total profile success");
       }else{
-         Print("Close position by total profile error:",GetLastError());
+         print("Close position by total profile error:",GetLastError());
       }
 
    }
@@ -185,37 +185,37 @@ void ClosePositionTotalProfit(){
 void ClosePositionProfit(){
    // signal start
    if(CloseProfit == 0) return;
-   
+
    // check total position
    if(PositionsTotal() == 0) return;
-   
+
    for(int i = PositionsTotal() - 1 ; i >= 0; i-- ){
       ulong  ticket        = PositionGetTicket(i);
       string ticket_symbol = PositionGetSymbol(i);
-      
+
       if(!MarketOpen(ticket_symbol))
          continue;
-      
+
       //---focus position
       if(!PositionSelectByTicket(ticket))
          continue;
-         
+
       if(PositionGetDouble(POSITION_PROFIT) > 1){
          if(trade.PositionClose(ticket)){
-            Print("ClosePositionProfit success");
+            print("ClosePositionProfit success");
          }else{
-            Print("ClosePositionProfit error:",GetLastError());
+            print("ClosePositionProfit error:",GetLastError());
          }
-         
+
       }
-   
+
 
    }
-   
-   
+
+
 }
-  
-  
+
+
 bool IsTradingSession()
 {
     MqlDateTime dt;
@@ -251,10 +251,10 @@ void CheckAndDeleteOldestPending()
     ulong oldest_ticket = 0;
     datetime oldest_time = LONG_MAX;
 
-    for (int i = total_orders - 1; i >= 0; i--) 
+    for (int i = total_orders - 1; i >= 0; i--)
     {
         ulong ticket = OrderGetTicket(i);
-        if (ticket == 0) continue; 
+        if (ticket == 0) continue;
 
         if (!OrderSelect(ticket))
             continue;
@@ -264,7 +264,7 @@ void CheckAndDeleteOldestPending()
             type != ORDER_TYPE_SELL_LIMIT &&
             type != ORDER_TYPE_BUY_STOP &&
             type != ORDER_TYPE_SELL_STOP)
-            continue; 
+            continue;
 
         datetime setup_time = (datetime)OrderGetInteger(ORDER_TIME_SETUP);
         if (setup_time < oldest_time)
@@ -278,11 +278,11 @@ void CheckAndDeleteOldestPending()
     {
         if (!trade.OrderDelete(oldest_ticket))
         {
-            Print("❌ Delete Pending Order Fail Ticket: ", oldest_ticket, " | Error: ", GetLastError());
+            print("❌ Delete Pending Order Fail Ticket: ", oldest_ticket, " | Error: ", GetLastError());
         }
         else
         {
-            Print("✅ Delete Pending Success Ticket: ", oldest_ticket,
+            print("✅ Delete Pending Success Ticket: ", oldest_ticket,
                   " | Time setup", TimeToString(oldest_time, TIME_DATE | TIME_MINUTES));
         }
     }

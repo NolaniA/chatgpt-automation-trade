@@ -3,6 +3,7 @@
 
 # Python cache
 __pycache__/
+*__pycache__/
 *.pyc
 
 # Hidden pycache (กรณีมี .__pycache__)
@@ -10,3 +11,10 @@ __pycache__/
 
 # Data files
 data_files/
+*data_files/
+
+data_zip/
+*data_zip/
+
+result_analyse/
+*result_analyse/

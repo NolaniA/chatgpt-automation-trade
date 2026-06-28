@@ -1,45 +1,37 @@
 import MetaTrader5 as mt5
-import json
-from pathlib import Path
+from modules.utils.save_json_to_data_files import save_json
+from typing import Any
 
 
-def get_orders_by_symbol(symbol: str = None, output_folder: Path = None):
+def get_orders_by_symbol(
+        symbol: str,
+        mt5_client: Any = mt5,
+        file_name: str = "orders.json"
+        ):
 
-    try:
-        if not mt5.initialize():
-            print("initialize() failed:", mt5.last_error())
-            return
+        orders = mt5_client.orders_get(symbol=symbol)
 
-        orders = mt5.orders_get(symbol=symbol)
-
-        # แปลง orders เป็น list ของ dict
         if orders:
             data = [p._asdict() for p in orders]
-            # print(f"Total orders on {symbol} =", len(data))
         else:
-            # print(f"No open orders on {symbol}")
-            data = []   # ไม่มี position ก็เป็น array ว่าง
+            data = []
 
-        # กำหนด path
-        if output_folder:
-            output_folder.mkdir(parents=True, exist_ok=True)
-            # file_path = output_folder / f"{symbol}_orders.json"
-            file_path = output_folder / "orders.json"
-        else:
-            # file_path = Path(f"{symbol}_orders.json")
-            file_path = Path("orders.json")
+        save_json(file_name=file_name,data=data)
 
-        # save json
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
 
-        # print(f"JSON saved -> {file_path}")
 
-    except Exception as e:
-        print(e)
+if __name__ == "__main__":
+    try:
+        if not mt5.initialize():
+            raise RuntimeError(
+                f"Failed to initialize MetaTrader 5: {mt5.last_error()}"
+            )
+
+        orders = get_orders_by_symbol(
+            symbol="XAUUSD", mt5_client=mt5
+        )
+
+        print_log(orders)
 
     finally:
         mt5.shutdown()
-
-if __name__ == "__main__":
-    get_orders_by_symbol("XAUUSDc", Path("./data_files"))

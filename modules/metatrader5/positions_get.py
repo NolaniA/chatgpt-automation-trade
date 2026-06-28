@@ -1,45 +1,38 @@
+
 import MetaTrader5 as mt5
-import json
-from pathlib import Path
+from modules.utils.save_json_to_data_files import save_json
+from typing import Any
 
 
-def get_positions_by_symbol(symbol: str = None, output_folder: Path = None):
+def get_positions_by_symbol(
+        symbol: str,
+        mt5_client: Any = mt5,
+        file_name: str = "positions.json"
+        ):
 
-    try:
-        if not mt5.initialize():
-            print("initialize() failed:", mt5.last_error())
-            return
+        positions = mt5_client.positions_get(symbol=symbol)
 
-        positions = mt5.positions_get(symbol=symbol)
-
-        # แปลง positions เป็น list ของ dict
         if positions:
             data = [p._asdict() for p in positions]
-            # print(f"Total positions on {symbol} =", len(data))
         else:
-            # print(f"No open positions on {symbol}")
-            data = []   # ไม่มี position ก็เป็น array ว่าง
+            data = []
 
-        # กำหนด path
-        if output_folder:
-            output_folder.mkdir(parents=True, exist_ok=True)
-            # file_path = output_folder / f"{symbol}_positions.json"
-            file_path = output_folder / "positions.json"
-        else:
-            # file_path = Path(f"{symbol}_positions.json")
-            file_path = Path("positions.json")
+        save_json(file_name=file_name,data=data)
 
-        # save json
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
 
-        # print(f"JSON saved -> {file_path}")
 
-    except Exception as e:
-        print(e)
+if __name__ == "__main__":
+    try:
+        if not mt5.initialize():
+            raise RuntimeError(
+                f"Failed to initialize MetaTrader 5: {mt5.last_error()}"
+            )
+
+        positions = get_positions_by_symbol(
+            symbol="XAUUSDc", mt5_client=mt5
+        )
+
+        print_log(positions)
 
     finally:
         mt5.shutdown()
-
-if __name__ == "__main__":
-    get_positions_by_symbol("XAUUSDc", Path("data_files"))
