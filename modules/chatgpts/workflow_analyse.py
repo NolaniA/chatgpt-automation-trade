@@ -158,7 +158,7 @@ class GptAnalyzer:
 
         stop_button.wait_for(
             state="hidden",
-            timeout=180_000,
+            timeout=300_000,
         )
 
 
