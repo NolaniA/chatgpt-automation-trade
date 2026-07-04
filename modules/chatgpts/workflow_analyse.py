@@ -264,14 +264,17 @@ class GptAnalyzer:
 
         print_log("Sending prompt")
 
+        old_url = self.page.url
+
         send_button.click()
 
-        self.page.wait_for_url(rf"{self.url_gpt_project}/c/**",
+        self.page.wait_for_url(
+            lambda url: str(url) != old_url,
             timeout=30_000,
         )
 
 
-        self.page.reload()
+        self.page.reload(wait_until="load")
 
         print_log("Waiting for GPT response")
 
