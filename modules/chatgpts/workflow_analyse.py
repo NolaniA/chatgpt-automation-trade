@@ -266,10 +266,10 @@ class GptAnalyzer:
 
         send_button.click()
 
-        stop_button = self.page.get_by_test_id(
-            "stop-button"
+        self.page.wait_for_url(
+            lambda url: str(url).startswith(f"{self.url_gpt_project.rstrip('/')}/c/"),
+            timeout=30_000,
         )
-        stop_button.wait_for(state="attached")
 
 
         self.page.reload()
