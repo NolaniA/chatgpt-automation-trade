@@ -368,8 +368,8 @@ def main() -> None:
                     )
                 except Exception as e:
                     print_log(f"cycle analyse fail: {e}")
-                finally:
-                    kill_edge_processes()
+                # finally:
+                #     kill_edge_processes()
 
 
             wait_until_next_round(
@@ -379,8 +379,8 @@ def main() -> None:
     except KeyboardInterrupt:
         print_log("\nProgram stopped by user.")
 
-    finally:
-        kill_edge_processes()
+    # finally:
+    #     kill_edge_processes()
         # mt5.shutdown()
 
 
