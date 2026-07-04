@@ -769,7 +769,7 @@ class MT5AutoTrader:
 
 if __name__ == "__main__":
     trader = MT5AutoTrader(
-        symbol="XAUUSDc",
+        symbol="BTCUSDc",
         file_name="result_gpt.json",
         risk_percent=2.0,
 
