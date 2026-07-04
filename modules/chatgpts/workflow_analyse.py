@@ -267,7 +267,7 @@ class GptAnalyzer:
         send_button.click()
 
         self.page.wait_for_url(
-            lambda url: str(url).startswith(f"{self.url_gpt_project.rstrip('/')}/c/"),
+            lambda url: str(url).startswith(f"{self.url_gpt_project.rstrip('/')}/c/**"),
             timeout=30_000,
         )
 
