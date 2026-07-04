@@ -266,7 +266,7 @@ class GptAnalyzer:
 
         send_button.click()
 
-        
+        self.page.reload()
 
         print_log("Waiting for GPT response")
 
