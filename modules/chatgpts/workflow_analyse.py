@@ -266,6 +266,12 @@ class GptAnalyzer:
 
         send_button.click()
 
+        stop_button = self.page.get_by_test_id(
+            "stop-button"
+        )
+        stop_button.wait_for(state="attached")
+
+
         self.page.reload()
 
         print_log("Waiting for GPT response")
