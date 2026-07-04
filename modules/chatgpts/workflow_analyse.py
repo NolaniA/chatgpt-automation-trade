@@ -252,10 +252,8 @@ class GptAnalyzer:
 
         print_log("Filling prompt")
 
-        # fill จะแทนข้อความเก่าให้อัตโนมัติ
         prompt_editor.fill(prompt_text)
 
-        # รอให้การอัปโหลดไฟล์เสร็จและปุ่ม Send พร้อมใช้งาน
         expect(send_button).to_be_visible(
             timeout=60_000
         )
@@ -267,6 +265,8 @@ class GptAnalyzer:
         print_log("Sending prompt")
 
         send_button.click()
+
+        
 
         print_log("Waiting for GPT response")
 
