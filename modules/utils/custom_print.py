@@ -17,7 +17,7 @@ def print_status(message: str) -> None:
 
 def print_log(message: Any, end: str = "\r") -> None:
     builtins.print(
-        f"\r{str(message):<200}",
+        f"\r{str(message):<100}",
         end=end,
         flush=True,
     )
