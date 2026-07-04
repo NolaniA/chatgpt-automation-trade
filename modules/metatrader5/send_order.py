@@ -97,6 +97,8 @@ class MT5AutoTrader:
         if not isinstance(signal, dict):
             raise ValueError("Signal JSON must be an object")
 
+        print_log("load signal success!!")
+
         return signal
 
     # =========================================================
@@ -654,6 +656,8 @@ class MT5AutoTrader:
         print_log(f"final lot: {volume}")
         print_log(f"maximum risk amount: {risk_amount:.2f}")
         print_log(f"estimated SL loss: {estimated_loss:.2f}")
+
+        print_log("build request success")
 
         return request
 
