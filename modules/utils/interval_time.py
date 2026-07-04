@@ -18,5 +18,5 @@ def wait_until_next_round(minute_round: int):
         next_run = now.replace(minute=minute, second=0, microsecond=0)
 
     wait_seconds = (next_run - now).total_seconds()
-    print_log(f"Waiting {int(wait_seconds)} seconds...", end="\n")
+    print_log(f"Waiting {int(wait_seconds)} seconds...")
     time.sleep(wait_seconds)
