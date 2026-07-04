@@ -775,7 +775,7 @@ if __name__ == "__main__":
 
         # True = ตรวจสอบอย่างเดียว ไม่เปิด order
         # False = ส่ง order จริง
-        dry_run=True,
+        dry_run=False,
     )
 
     trader.run()
