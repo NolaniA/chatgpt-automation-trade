@@ -359,13 +359,18 @@ def main() -> None:
                         f"Market is closed for: {symbol}"
                     )
                     continue
+                try:
+                    run_cycle(
+                        symbol=symbol,
+                        bars=args.bars,
+                        timeframes=args.multi_tf,
+                        dry_run=args.dry_run,
+                    )
+                except Exception as e:
+                    print_log(f"cycle analyse fail: {e}")
+                finally:
+                    kill_edge_processes()
 
-                run_cycle(
-                    symbol=symbol,
-                    bars=args.bars,
-                    timeframes=args.multi_tf,
-                    dry_run=args.dry_run,
-                )
 
             wait_until_next_round(
                 minute_round=args.interval_minute,
