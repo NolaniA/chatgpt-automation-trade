@@ -285,7 +285,7 @@ def run_cycle(
         print_log(f"ZIP created: {zip_path}")
 
         # 3. เปิด Edge profile และส่งข้อมูลให้ ChatGPT
-        setup_edge_profile()
+        # setup_edge_profile()
 
         gpt_runner()
 

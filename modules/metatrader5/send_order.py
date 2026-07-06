@@ -750,7 +750,7 @@ class MT5AutoTrader:
                 print_log("Signal is NONE. No order sent.")
                 return None
 
-            print_log(f"action | symbol: {request["symbol"]}, volume: {request["volume"]}, sl: {request["sl"]}, tp: {request["tp"]}")
+            print_log(f"action | symbol: {request["symbol"]}, volume: {request["volume"]}, sl: {request["sl"]}, tp: {request["tp"]}", end="\n" )
 
             self.check_request(request)
 
