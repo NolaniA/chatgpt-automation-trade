@@ -213,8 +213,6 @@ class GptAnalyzer:
 
         print_log(f"Opening GPT project: {self.url_gpt_project}")
 
-        # set initial page defualt
-        # self.page.goto("https://google.com", wait_until="domcontentloaded")
 
         self.page.goto(
             self.url_gpt_project,
@@ -234,8 +232,10 @@ class GptAnalyzer:
             "send-button"
         )
 
+
+
         prompt_editor.wait_for(
-            state="visible",
+            state="attached",
             timeout=60_000,
         )
 
@@ -249,20 +249,11 @@ class GptAnalyzer:
         upload_input.set_input_files(
             str(data_zip_path)
         )
-        expect(send_button).to_be_visible(
-            timeout=60_000
-        )
-
-        expect(send_button).to_be_enabled(
-            timeout=300_000
-        )
+        # wait progess upload file
+        self.page.locator("button.cursor-wait").wait_for( state="detached", timeout=30_000)
 
         print_log("Filling prompt")
 
-        prompt_editor.wait_for(
-            state="visible",
-            timeout=60_000,
-        )
 
         prompt_editor.fill(prompt_text)
 
