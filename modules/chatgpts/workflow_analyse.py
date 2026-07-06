@@ -249,6 +249,13 @@ class GptAnalyzer:
         upload_input.set_input_files(
             str(data_zip_path)
         )
+        expect(send_button).to_be_visible(
+            timeout=60_000
+        )
+
+        expect(send_button).to_be_enabled(
+            timeout=300_000
+        )
 
         print_log("Filling prompt")
 
