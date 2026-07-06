@@ -259,6 +259,11 @@ class GptAnalyzer:
 
         print_log("Filling prompt")
 
+        prompt_editor.wait_for(
+            state="visible",
+            timeout=60_000,
+        )
+
         prompt_editor.fill(prompt_text)
 
         expect(send_button).to_be_visible(
