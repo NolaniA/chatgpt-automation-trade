@@ -249,7 +249,7 @@ class GptAnalyzer:
         upload_input.set_input_files(
             str(data_zip_path)
         )
-        # wait progess upload file
+        # wait progress upload file
         self.page.locator("button.cursor-wait").wait_for( state="detached", timeout=30_000)
 
         print_log("Filling prompt")
