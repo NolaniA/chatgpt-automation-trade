@@ -318,8 +318,8 @@ def run_cycle(
 
         return False
 
-    finally:
-        kill_edge_processes()
+    # finally:
+    #     kill_edge_processes()
 
 
 def main() -> None:
