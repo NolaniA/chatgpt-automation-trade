@@ -239,6 +239,8 @@ class GptAnalyzer:
             timeout=60_000,
         )
 
+        prompt_editor.clear()
+
         upload_input.wait_for(
             state="attached",
             timeout=60_000,
