@@ -38,7 +38,7 @@ class GptAnalyzer:
         )
 
         self.path_prompt_file = Path(
-            r"datas\prompts\prompt_readfile.txt"
+            r"datas\prompts\prompt.txt"
         )
 
         self.path_result_file = Path(
