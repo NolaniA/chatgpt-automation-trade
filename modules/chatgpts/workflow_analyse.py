@@ -221,7 +221,7 @@ class GptAnalyzer:
         )
 
         prompt_editor = self.page.locator(
-            "#prompt-textarea"
+            "div#prompt-textarea"
         )
 
         upload_input = self.page.locator(
@@ -253,6 +253,8 @@ class GptAnalyzer:
         )
         # wait progress upload file
         self.page.locator("button.cursor-wait").wait_for( state="detached", timeout=30_000)
+
+        self.page.pause()
 
         print_log("Filling prompt")
 
