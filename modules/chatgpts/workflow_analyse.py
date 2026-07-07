@@ -30,7 +30,7 @@ class GptAnalyzer:
             self.page = self.context.new_page()
 
         self.url_gpt_project = (
-            "https://chatgpt.com/g/g-p-6a412e0893948191a5dea968f713806e/project"
+            "https://chatgpt.com/g/g-p-6a4d0f8f40fc81919abce2d8ae7fd0bd/project"
         )
 
         self.path_data_zip = Path(
@@ -254,7 +254,7 @@ class GptAnalyzer:
             state="attached",
             timeout=60_000,
         )
-        
+
         upload_input.set_input_files(
             str(data_zip_path)
         )
