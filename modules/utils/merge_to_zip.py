@@ -1,5 +1,6 @@
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
+from modules.utils.custom_print import print_log
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -35,7 +36,7 @@ def create_zip_file(
 
     files = [
         path
-        for path in target_folder.iterdir()
+        for path in target_folder.rglob("*")
         if path.is_file()
     ]
 
@@ -53,7 +54,7 @@ def create_zip_file(
             for file_path in files:
                 zip_file.write(
                     file_path,
-                    arcname=file_path.name,
+                    arcname=file_path.relative_to(target_folder),
                 )
 
     except OSError as error:
