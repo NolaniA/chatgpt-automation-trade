@@ -72,3 +72,37 @@ If `prompt.txt` contains trading rules, use this priority:
 * Do not include markdown unless `prompt.txt` explicitly requires it.
 
 Now extract the ZIP file, read `prompt.txt`, load all required files, and perform the analysis exactly according to the conditions in `prompt.txt`.
+
+## Strict Output Rules
+
+* Do not explain anything.
+* Output exactly one fenced code block using ```json.
+* Do not add text before or after the code block.
+* Inside the code block, output only valid JSON.
+* No comments.
+* No trailing commas.
+* Always return every field.
+* All numeric values must be numbers, not strings.
+* Round price values according to symbol digits or tick size.
+* Round RR to two decimal places.
+* Normalize lot according to volume_step.
+* The reason must not exceed 30 characters.
+* The reason must not be empty.
+* For NONE, use zero for every numeric field.
+* When an order is duplicated, return NONE with reason DUPLICATE_ORDER.
+* Do not return the existing order details.
+* Do not modify an existing order.
+* Do not suggest cancelling an existing order.
+* Do not produce a replacement order in the same response.
+
+Return exactly this JSON structure:
+
+{
+"type_position": "NONE",
+"price": 0.0,
+"SL": 0.0,
+"TP": 0.0,
+"lot": 0.0,
+"RR": 0.0,
+"reason": "NO_VALID_SETUP"
+}
