@@ -241,13 +241,20 @@ class GptAnalyzer:
 
         prompt_editor.clear()
 
+
+        print_log("Filling prompt")
+
+
+        prompt_editor.clear()
+        prompt_editor.fill(prompt_text)
+
+        print_log(f"Uploading file: {data_zip_path}")
+
         upload_input.wait_for(
             state="attached",
             timeout=60_000,
         )
-
-        print_log(f"Uploading file: {data_zip_path}")
-
+        
         upload_input.set_input_files(
             str(data_zip_path)
         )
@@ -255,11 +262,6 @@ class GptAnalyzer:
         self.page.locator("button.cursor-wait").wait_for( state="detached", timeout=30_000)
 
 
-        print_log("Filling prompt")
-
-
-        prompt_editor.clear()
-        prompt_editor.fill(prompt_text)
 
         expect(send_button).to_be_visible(
             timeout=60_000
