@@ -254,11 +254,11 @@ class GptAnalyzer:
         # wait progress upload file
         self.page.locator("button.cursor-wait").wait_for( state="detached", timeout=30_000)
 
-        self.page.pause()
 
         print_log("Filling prompt")
 
 
+        prompt_editor.clear()
         prompt_editor.fill(prompt_text)
 
         expect(send_button).to_be_visible(
