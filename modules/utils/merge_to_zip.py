@@ -32,7 +32,9 @@ def create_zip_file(
         )
 
     output_folder.mkdir(parents=True, exist_ok=True)
+
     zip_path = output_folder / file_name
+    temp_zip_path = output_folder / f".{zip_path.stem}.tmp.zip"
 
     files = [
         path
@@ -46,16 +48,36 @@ def create_zip_file(
         )
 
     try:
+        if temp_zip_path.exists():
+            temp_zip_path.unlink()
+
         with ZipFile(
-            zip_path,
+            temp_zip_path,
             mode="w",
             compression=ZIP_DEFLATED,
         ) as zip_file:
             for file_path in files:
+                arcname = file_path.relative_to(target_folder)
+
                 zip_file.write(
                     file_path,
-                    arcname=file_path.relative_to(target_folder),
+                    arcname=arcname,
                 )
+
+                print_log(
+                    f"Add to zip: {arcname}",
+                    end="\n",
+                )
+
+        if zip_path.exists():
+            zip_path.unlink()
+
+        temp_zip_path.replace(zip_path)
+
+    except PermissionError as error:
+        raise RuntimeError(
+            f"Cannot replace ZIP file. File may be open or locked: {zip_path}"
+        ) from error
 
     except OSError as error:
         raise RuntimeError(

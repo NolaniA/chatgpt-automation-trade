@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict
 from pathlib import Path
 from datetime import datetime
+from modules.utils.custom_print import print_log
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_FOLDER = PROJECT_ROOT / "datas" / "data_files"
@@ -16,6 +17,7 @@ class MT5Config:
         mt5.TIMEFRAME_M1,
         mt5.TIMEFRAME_M5,
         mt5.TIMEFRAME_M15,
+        mt5.TIMEFRAME_M30,
         mt5.TIMEFRAME_H1,
         mt5.TIMEFRAME_H4,
         mt5.TIMEFRAME_D1,
