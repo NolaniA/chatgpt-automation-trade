@@ -66,7 +66,7 @@ def create_zip_file(
 
                 print_log(
                     f"Add to zip: {arcname}",
-                    end="\n",
+                    
                 )
 
         if zip_path.exists():
