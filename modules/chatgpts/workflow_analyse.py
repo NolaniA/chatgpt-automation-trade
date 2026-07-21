@@ -156,8 +156,9 @@ class GptAnalyzer:
                 "Waiting for send button instead."
             )
 
+
         stop_button.wait_for(
-            state="hidden",
+            state="detached",
             timeout=600_000,
         )
 
