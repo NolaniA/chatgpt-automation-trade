@@ -369,6 +369,7 @@ def main() -> None:
                     )
                 except Exception as e:
                     print_log(f"cycle analyse fail: {e}")
+                    continue
                 # finally:
                 #     kill_edge_processes()
 
