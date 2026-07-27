@@ -280,11 +280,11 @@ class GptAnalyzer:
 
         self.page.wait_for_url(
             lambda url: str(url) != old_url,
-            timeout=30_000,
+            timeout=60_000,
         )
 
 
-        self.page.reload(wait_until="load")
+        self.page.reload(wait_until="domcontentloaded", timeout=60_000,)
 
         print_log("Waiting for GPT response")
 

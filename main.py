@@ -324,7 +324,7 @@ def run_cycle(
 
 
 def main() -> None:
-    package_runner()
+    # package_runner()
 
     parser = create_parser()
     args = parser.parse_args()
@@ -343,36 +343,40 @@ def main() -> None:
 
     try:
         while True:
-            for symbol in symbols:
-                try:
-                    market_open = is_market_open(
-                        symbol=symbol,
-                    )
-                except Exception as error:
-                    print_log(
-                        f"Failed to check market for "
-                        f"'{symbol}': {error}"
-                    )
-                    continue
+            try:
+                for symbol in symbols:
+                    try:
+                        market_open = is_market_open(
+                            symbol=symbol,
+                        )
+                    except Exception as error:
+                        print_log(
+                            f"Failed to check market for "
+                            f"'{symbol}': {error}"
+                        )
+                        continue
 
-                if not market_open:
-                    print_log(
-                        f"Market is closed for: {symbol}"
-                    )
-                    continue
-                try:
-                    run_cycle(
-                        symbol=symbol,
-                        bars=args.bars,
-                        timeframes=args.multi_tf,
-                        dry_run=args.dry_run,
-                    )
-                except Exception as e:
-                    print_log(f"cycle analyse fail: {e}")
-                    continue
-                # finally:
-                #     kill_edge_processes()
+                    if not market_open:
+                        print_log(
+                            f"Market is closed for: {symbol}"
+                        )
+                        continue
+                    try:
+                        run_cycle(
+                            symbol=symbol,
+                            bars=args.bars,
+                            timeframes=args.multi_tf,
+                            dry_run=args.dry_run,
+                        )
+                    except Exception as e:
+                        print_log(f"cycle analyse fail: {e}")
+                        continue
+                    # finally:
+                    #     kill_edge_processes()
 
+            except Exception as e:
+                print_log(f"cycle analyse fail: {e}")
+                continue
 
             wait_until_next_round(
                 minute_round=args.interval_minute,
