@@ -1421,25 +1421,62 @@ Result:
 
 ## Risk Management
 
-The maximum permitted monetary loss at Stop Loss is 2.0% of the account risk base.
+The maximum permitted calculable monetary loss at Stop Loss is 2.0% of the account risk base.
 
-This 2.0% limit refers to monetary account risk, not SL price distance.
+This 2.0% limit refers to monetary account risk, not SL price distance, points, pips, ATR distance, margin usage, or leverage.
 
-Use the following risk model:
+Use the following risk tiers:
 
-* Normal setup risk: 1.0%
-* High-volatility or uncertain setup risk: 0.5%
-* Strong A+ setup risk: up to 1.5%
+* High-volatility, uncertain, or lower-quality setup risk: 0.5%
+* Normal valid setup risk: 1.0%
+* Strong setup risk: 1.5%
+* Exceptional A+ setup risk: up to 2.0%
 * Absolute maximum risk at SL: 2.0%
-* Never allow estimated or actual SL loss to exceed 2.0%
-* A wider structural SL must reduce lot size, not increase monetary risk
-* Leverage must not increase risk percentage
+
+Select `selected_risk_percent` before calculating lot size:
+
+* Use 0.5 for high-volatility, uncertain, or lower-quality setups.
+* Use 1.0 for normal valid setups.
+* Use 1.5 for strong setups.
+* Use 2.0 only for an exceptional A+ setup that satisfies every 2.0% requirement below.
+* Do not select arbitrary values between these risk tiers.
+
+selected_risk_percent =
+one of [0.5, 1.0, 1.5, 2.0]
+
+Use 2.0% risk only when ALL of the following are true:
+
+* higher-timeframe and execution-timeframe structure are aligned,
+* the relevant liquidity sweep is completed or nearby liquidity is clearly resolved,
+* closed-candle reclaim and BOS, CHoCH, MSS, or clear displacement are confirmed,
+* the selected POI and structural invalidation are clear,
+* final SL includes the complete liquidity and volatility buffer,
+* recent volatility does not make execution abnormally uncertain,
+* the target path is not blocked by a major opposing level,
+* actual RR using the final buffered SL is at least 1.5,
+* no duplicate, same-direction, or prohibited opposite exposure exists,
+* broker volume limits and margin requirements are valid when calculable.
+
+When any 2.0% requirement is uncertain or unsupported, use 1.5% or less.
+Do not use 2.0% merely because RR is high.
 
 Determine the account risk base as:
 
-risk_base = min(account_balance, account_equity)
+risk_base =
+min(account_balance, account_equity)
+when account_equity is available and greater than zero
 
-Use account_balance when account_equity is unavailable.
+Otherwise:
+
+risk_base = account_balance
+
+Requirements:
+
+* account_balance must be greater than zero,
+* risk_base must be greater than zero,
+* use the lower of balance and equity when both are valid,
+* do not use free margin as the account risk base,
+* do not use leverage to increase selected_risk_percent.
 
 Calculate:
 
@@ -1452,14 +1489,29 @@ risk_base × selected_risk_percent / 100
 risk_amount =
 min(selected_risk_amount, maximum_risk_amount)
 
-Requirements:
+Use all monetary values in the same unit as the trading account.
 
-* selected_risk_percent must be greater than 0
-* selected_risk_percent must not exceed 2.0
-* widening SL must always cause lot size to decrease
-* do not reduce SL distance to maintain the original lot
-* do not keep the original lot after SL is widened
-* estimated loss at final SL must not exceed maximum_risk_amount
+For a cent account:
+
+* keep balance, equity, risk_amount, maximum_risk_amount, tick_value, loss_per_lot, actual_risk, and free_margin in cent-account units,
+* do not divide or multiply account values by 100 unless an explicit conversion is supplied,
+* do not mix standard-account currency units with cent-account units.
+
+Risk requirements:
+
+* selected_risk_percent must be one of 0.5, 1.0, 1.5, or 2.0,
+* selected_risk_percent must not exceed 2.0,
+* estimated loss at final SL must not exceed maximum_risk_amount,
+* actual normalized risk at final SL must not exceed maximum_risk_amount,
+* widening SL must reduce lot size,
+* do not reduce SL distance to maintain the original lot,
+* do not keep the original lot after SL is widened,
+* do not widen SL solely to maintain a preferred lot,
+* leverage affects margin only and must not increase monetary risk.
+
+When explicit commission or other unavoidable execution costs are supplied and can be calculated reliably, include them in estimated and actual risk.
+Do not invent missing commission, slippage, gap, or conversion costs.
+
 ---
 
 ## Lot Size Calculation
@@ -1546,24 +1598,86 @@ Then:
 * do not round upward,
 * do not exceed volume_max,
 * respect volume_step,
-* use volume_min only when estimated SL loss remains within the maximum permitted risk,
 * lot must be greater than zero.
+
+If volume_max is available and normalized_lot exceeds volume_max:
+
+normalized_lot =
+floor(volume_max / volume_step) × volume_step
+
+Do not increase normalized_lot after applying volume_max.
 
 If normalized_lot is below volume_min:
 
-1. Calculate estimated loss using volume_min and final buffered SL.
-2. Use volume_min only if estimated risk is not greater than 2.0%.
-3. Otherwise return NONE.
+1. Calculate:
 
-After normalization:
+   estimated_loss_at_volume_min =
+   volume_min × loss_per_lot
+
+2. Include explicit calculable commission or execution costs when supplied.
+3. Calculate:
+
+   estimated_risk_percent_at_volume_min =
+   estimated_loss_at_volume_min / risk_base × 100
+
+4. Use volume_min only when BOTH are true:
+
+   estimated_loss_at_volume_min <= maximum_risk_amount
+   estimated_risk_percent_at_volume_min <= 2.0
+
+5. Otherwise return NONE with:
+
+   "reason": "LOT_BELOW_MIN"
+
+After normalization, calculate:
 
 actual_risk =
 normalized_lot × loss_per_lot
 
-actual_risk_percent =
-actual_risk / account_balance × 100
+Include explicit calculable commission or execution costs when supplied.
 
-The final normalized lot must not cause actual risk to exceed 2.0%.
+actual_risk_percent =
+actual_risk / risk_base × 100
+
+The order is valid only when BOTH are true:
+
+actual_risk <= maximum_risk_amount
+
+actual_risk_percent <= 2.0
+
+Requirements:
+
+* normalized_lot must always be rounded downward,
+* never round lot upward to meet volume_step or volume_min,
+* never modify Entry, final SL, or TP merely to allow a larger lot,
+* never keep the previous lot after final SL distance changes,
+* actual_risk must not exceed risk_amount except only when volume_min is required and the resulting risk still remains within the absolute 2.0% maximum,
+* actual_risk must never exceed maximum_risk_amount,
+* actual_risk_percent must never exceed 2.0.
+
+If:
+
+actual_risk > maximum_risk_amount
+
+or:
+
+actual_risk_percent > 2.0
+
+Then:
+
+1. Reduce normalized_lot downward by one volume_step.
+2. Recalculate actual_risk.
+3. Recalculate actual_risk_percent.
+4. Repeat until BOTH conditions are true:
+
+   actual_risk <= maximum_risk_amount
+   actual_risk_percent <= 2.0
+
+5. If normalized_lot becomes lower than volume_min or is not greater than zero, return NONE with:
+
+   "reason": "RISK_EXCEEDS_LIMIT"
+
+After every lot reduction, confirm that normalized_lot still respects volume_step, volume_min, and volume_max.
 
 ---
 
@@ -1576,7 +1690,7 @@ Attempt all available lot-calculation methods first.
 Return NONE for lot-related reasons only when:
 
 * no valid lot-calculation method can be used,
-* minimum broker lot exceeds 2.0% risk,
+* minimum broker lot causes estimated loss above maximum_risk_amount or estimated risk above 2.0%,
 * estimated margin exceeds available free margin,
 * normalized lot is zero,
 * required currency conversion is unavailable.
@@ -1697,6 +1811,16 @@ Also verify:
 * `modify.close_pending` contains no duplicate tickets.
 * When `modify.close_pending` is not empty, `type_position` is `NONE`, all numeric trade fields are zero, and reason is `PENDING_INVALIDATED`.
 * When no pending order requires closure, `modify.close_pending` is an empty list.
+* Monetary loss at final SL does not exceed 2.0% of risk_base.
+* Lot size was calculated using the final buffered SL.
+* Lot was reduced when the SL distance increased.
+* No price-based SL distance was interpreted as the 2.0% account-risk limit.
+* `selected_risk_percent` is one of 0.5, 1.0, 1.5, or 2.0.
+* A 2.0% selection satisfies every exceptional A+ requirement.
+* `actual_risk` does not exceed `maximum_risk_amount`.
+* `actual_risk_percent` does not exceed 2.0.
+* Explicit calculable commission or execution costs were included when supplied.
+* Balance, equity, tick value, risk, and margin units are consistent, including for cent accounts.
 
 ---
 
