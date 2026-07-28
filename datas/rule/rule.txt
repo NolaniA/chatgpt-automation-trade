@@ -246,6 +246,9 @@ A liquidity sweep is strongly preferred but is not mandatory when all of the fol
 * identifiable structural invalidation,
 * sufficient room to a logical target.
 
+For a reversal setup against the immediate lower-timeframe move, a POI touch or a rejection wick alone is not sufficient.
+Require a closed-candle reclaim plus at least one of BOS, CHoCH, MSS, or clear displacement before Entry.
+
 Do not require liquidity sweep, BOS, CHoCH, MSS, order block, FVG, premium or discount, and volume confirmation to occur simultaneously.
 
 ---
@@ -335,44 +338,81 @@ When price is trapped between nearby opposing liquidity pools without displaceme
 
 ## Liquidity Sweep Entry Protection
 
-Avoid entering directly before an obvious liquidity pool is swept.
+Treat liquidity as a zone, not a single exact price.
 
-Before selecting Entry, identify whether price is close to:
+Before selecting Entry, map the complete nearby liquidity zone using:
 
 * equal highs or equal lows,
 * previous swing high or swing low,
 * session high or session low,
-* recent internal liquidity,
 * clustered wick highs or lows,
 * inducement,
+* recent internal liquidity,
 * obvious stop-loss concentration,
 * unresolved buy-side or sell-side liquidity.
 
+The liquidity-zone boundary must include the full wick cluster and not only the latest candle high or low.
+
 A POI touch alone is not sufficient when obvious nearby liquidity remains unswept.
+Do not enter on the first touch of a liquidity zone when normal probing can reasonably continue through the POI.
+
+### Sweep Completion Test
+
+Treat a sweep as completed only when closed-candle data supports most of the following:
+
+1. Price trades through the identified liquidity-zone boundary.
+2. Price rejects or closes back through the swept level.
+3. A closed candle shows displacement, BOS, CHoCH, MSS, or a strong reclaim.
+4. The reclaim is not immediately invalidated by the next closed candle.
+5. Entry is not placed directly into another nearby opposing liquidity pool.
+
+A wick through liquidity without a reclaim is not a confirmed sweep.
+A reclaim without displacement or structural confirmation is weak and should normally return NONE.
 
 ### BUY Protection
 
-For BUY setups, prefer:
+For BUY setups, prefer this sequence:
 
-1. Price sweeps sell-side liquidity.
-2. Price rejects or reclaims the swept level.
-3. A closed candle confirms bullish displacement, BOS, CHoCH, MSS, or strong rejection.
-4. Entry occurs only after confirmation or at a valid deeper bullish POI.
-5. SL is placed below the lowest sweep point plus a liquidity buffer.
+1. Price sweeps the complete sell-side liquidity zone.
+2. Price closes back above the swept boundary or clearly rejects it.
+3. A closed candle confirms bullish displacement, BOS, CHoCH, MSS, or strong reclaim.
+4. Prefer Entry on a controlled retracement into the bullish FVG, order block, breaker, mitigation block, or reclaimed structure created by the confirmation move.
+5. Use the lowest wick of the complete sweep sequence as structural invalidation.
+6. Place final SL below that sweep extreme plus the adaptive liquidity buffer.
 
-Do not enter BUY immediately above obvious equal lows or an unswept swing low unless strong continuation structure clearly invalidates the need for a sweep.
+Do not enter BUY immediately above equal lows, clustered lows, or an unswept protected low.
+Do not use the low of only the confirmation candle when an earlier candle in the same sweep sequence made a lower low.
 
 ### SELL Protection
 
-For SELL setups, prefer:
+For SELL setups, prefer this sequence:
 
-1. Price sweeps buy-side liquidity.
-2. Price rejects or moves back below the swept level.
-3. A closed candle confirms bearish displacement, BOS, CHoCH, MSS, or strong rejection.
-4. Entry occurs only after confirmation or at a valid deeper bearish POI.
-5. SL is placed above the highest sweep point plus a liquidity buffer.
+1. Price sweeps the complete buy-side liquidity zone.
+2. Price closes back below the swept boundary or clearly rejects it.
+3. A closed candle confirms bearish displacement, BOS, CHoCH, MSS, or strong reclaim.
+4. Prefer Entry on a controlled retracement into the bearish FVG, order block, breaker, mitigation block, or reclaimed structure created by the confirmation move.
+5. Use the highest wick of the complete sweep sequence as structural invalidation.
+6. Place final SL above that sweep extreme plus the adaptive liquidity buffer.
 
-Do not enter SELL immediately below obvious equal highs or an unswept swing high unless strong continuation structure clearly invalidates the need for a sweep.
+Do not enter SELL immediately below equal highs, clustered highs, or an unswept protected high.
+Do not use the high of only the confirmation candle when an earlier candle in the same sweep sequence made a higher high.
+
+### First-POI Penetration Rule
+
+When unresolved liquidity lies immediately beyond the first POI and recent wick behavior indicates that price commonly probes through that POI:
+
+* do not use the first POI as a blind LIMIT Entry,
+* prefer the deeper valid POI that remains inside the higher-timeframe setup,
+* or wait for sweep, reclaim, and lower-timeframe confirmation,
+* or return NONE.
+
+Do not widen the Entry zone merely to include every possible price.
+The selected Entry must still correspond to one defensible POI or confirmed execution level.
+
+### Failed Sweep Rule
+
+Return NONE when a closed candle decisively closes beyond the protected swing or through the complete POI invalidation zone and no immediate reclaim is confirmed.
+Do not classify continued displacement beyond the liquidity zone as a valid sweep merely because price may later reverse.
 
 ### Unswept Liquidity Rule
 
@@ -380,7 +420,7 @@ When important nearby liquidity remains unswept, prefer one of:
 
 * wait for the sweep and confirmation,
 * use a deeper LIMIT Entry at the actual POI,
-* use a STOP order after a confirmed breakout or breakdown,
+* use a STOP order only after a confirmed breakout or breakdown,
 * return NONE.
 
 Do not place SL inside the liquidity pool that price is likely to sweep.
@@ -548,7 +588,7 @@ Do not place structural SL:
 
 ## Liquidity Protection Buffer
 
-After identifying structural invalidation, add a liquidity and volatility buffer.
+After identifying structural invalidation, add an adaptive liquidity and volatility buffer.
 
 Use the strongest available components:
 
@@ -557,15 +597,16 @@ max(
 spread × spread_multiplier,
 tick_size × tick_multiplier,
 ATR(14) × atr_multiplier,
-median_recent_wick × wick_multiplier
+median_recent_wick × wick_multiplier,
+recent_sweep_extension_p75
 )
 
 Default multipliers:
 
-* spread_multiplier = 2.0
-* tick_multiplier = 3
-* atr_multiplier = 0.15
-* wick_multiplier = 0.50
+* spread_multiplier = 3.0
+* tick_multiplier = 5
+* atr_multiplier = 0.20
+* wick_multiplier = 0.75
 
 Where:
 
@@ -573,45 +614,57 @@ Where:
 * tick_size = broker minimum price increment
 * ATR(14) is calculated using closed candles on the execution or setup timeframe
 * median_recent_wick is the median wick length of the latest 10 to 20 closed candles
+* recent_sweep_extension_p75 is the 75th percentile of reliable recent wick penetration beyond comparable swing or liquidity boundaries before reclaim
+
+Use recent_sweep_extension_p75 only when at least five reliable comparable sweep samples can be identified from supplied closed candles.
+Ignore this component when reliable samples cannot be calculated.
+Do not invent historical sweep statistics.
 
 Use only components that can be calculated from supplied data.
-
-Do not invent missing spread, tick size, ATR, or wick information.
+Do not invent missing spread, tick size, ATR, wick, or sweep-extension information.
 
 If sufficient OHLC data exists, calculate ATR even when ATR is not explicitly supplied.
+When tick size and spread are unavailable, use candle volatility, recent wick behavior, and reliable sweep-extension behavior.
 
-When tick size and spread are unavailable, use candle volatility and recent wick behavior.
+The buffer is added beyond the complete structural or sweep extreme.
+It is not added from Entry and must not be used to hide an invalid setup.
 
 ---
 
 ## Dynamic Buffer Rules
 
-Use approximately:
+Select atr_multiplier from closed-candle conditions on the setup or execution timeframe:
 
-* 0.10 to 0.15 ATR in clean trending conditions after a completed sweep
-* 0.15 to 0.25 ATR in normal conditions
-* 0.25 to 0.35 ATR when recent candles show repeated sweeps or long wicks
-* up to 0.50 ATR only when higher-timeframe structure clearly requires wider invalidation
+* 0.15 to 0.20 ATR after a clean completed sweep, strong reclaim, and small stable wicks
+* 0.20 to 0.30 ATR in normal conditions
+* 0.30 to 0.45 ATR when recent candles show repeated sweeps, long wicks, elevated spread, or volatile probing
+* up to 0.50 ATR only when higher-timeframe structure clearly requires wider invalidation and RR remains naturally valid
 
-Use the lower buffer range when:
+Use the lower buffer range only when:
 
-* the liquidity sweep is already complete,
+* the complete liquidity sweep is already finished,
+* the reclaim is confirmed by a closed candle,
 * displacement is strong,
-* recent candle wicks are small,
+* recent wick sizes are stable and relatively small,
 * spread is stable,
-* execution occurs after a clear reclaim.
+* the selected Entry occurs after confirmation rather than before the sweep.
 
 Use the higher buffer range when:
 
-* recent candle wicks are long,
-* price repeatedly probes swing levels,
+* recent wick sizes are large relative to ATR,
+* price repeatedly probes the same swing or liquidity zone,
+* multiple sweep candles form before reclaim,
 * spread is elevated,
 * volatility is high,
-* the symbol frequently performs liquidity grabs,
-* Entry is near equal highs or equal lows.
+* the symbol frequently performs deep liquidity grabs,
+* Entry is near equal highs, equal lows, or clustered wick liquidity.
+
+When the required buffer makes RR lower than 1.5, return NONE.
+Do not tighten SL, move Entry unrealistically, or extend TP to recover RR.
+
+When the required buffer exceeds 0.50 ATR beyond the structural extreme, normally return NONE with reason SL_BUFFER_TOO_WIDE unless a supplied higher-timeframe setup clearly justifies it.
 
 The buffer must protect against normal liquidity probing without making SL structurally meaningless.
-
 Do not widen SL arbitrarily.
 
 ---
@@ -620,27 +673,29 @@ Do not widen SL arbitrarily.
 
 ### BUY
 
-structural_sl = lowest valid setup low or lowest liquidity-sweep low
+structural_sl = lowest valid setup low or lowest wick of the complete liquidity-sweep sequence
 
 final_sl = structural_sl − liquidity_buffer
 
 Requirements:
 
 * final_sl < Entry
-* final_sl is below the entire sweep wick
+* structural_sl includes every wick belonging to the current sweep sequence
+* final_sl is below the entire liquidity zone and complete sweep sequence
 * final_sl is outside equal lows or clustered sell-side liquidity
 * final_sl invalidates the bullish setup if reached
 
 ### SELL
 
-structural_sl = highest valid setup high or highest liquidity-sweep high
+structural_sl = highest valid setup high or highest wick of the complete liquidity-sweep sequence
 
 final_sl = structural_sl + liquidity_buffer
 
 Requirements:
 
 * final_sl > Entry
-* final_sl is above the entire sweep wick
+* structural_sl includes every wick belonging to the current sweep sequence
+* final_sl is above the entire liquidity zone and complete sweep sequence
 * final_sl is outside equal highs or clustered buy-side liquidity
 * final_sl invalidates the bearish setup if reached
 
@@ -1366,37 +1421,45 @@ Result:
 
 ## Risk Management
 
+The maximum permitted monetary loss at Stop Loss is 2.0% of the account risk base.
+
+This 2.0% limit refers to monetary account risk, not SL price distance.
+
 Use the following risk model:
 
-* Default risk: 1.0% of account balance
-* Strong A+ setup: up to 1.5%
-* Never exceed 2.0%
-* Use 1.0% when setup quality is uncertain
+* Normal setup risk: 1.0%
+* High-volatility or uncertain setup risk: 0.5%
+* Strong A+ setup risk: up to 1.5%
+* Absolute maximum risk at SL: 2.0%
+* Never allow estimated or actual SL loss to exceed 2.0%
+* A wider structural SL must reduce lot size, not increase monetary risk
 * Leverage must not increase risk percentage
 
-A setup may be classified as A+ only when most of the following exist:
+Determine the account risk base as:
 
-* clear higher-timeframe bias,
-* aligned timeframes,
-* liquidity sweep or clearly engineered liquidity,
-* strong POI,
-* clear displacement,
-* BOS, CHoCH, or MSS confirmation,
-* clear structural invalidation,
-* sufficient liquidity buffer,
-* unobstructed target path,
-* realistic TP.
+risk_base = min(account_balance, account_equity)
 
-Do not use 1.5% risk merely because RR is high.
+Use account_balance when account_equity is unavailable.
 
 Calculate:
 
-risk_amount = account_balance × risk_percent / 100
+maximum_risk_amount =
+risk_base × 2.0 / 100
 
-Use monetary values in the same unit as account balance.
+selected_risk_amount =
+risk_base × selected_risk_percent / 100
 
-For a cent account, keep balance, risk amount, tick value, and estimated loss in cent-account units unless an explicit conversion is supplied.
+risk_amount =
+min(selected_risk_amount, maximum_risk_amount)
 
+Requirements:
+
+* selected_risk_percent must be greater than 0
+* selected_risk_percent must not exceed 2.0
+* widening SL must always cause lot size to decrease
+* do not reduce SL distance to maintain the original lot
+* do not keep the original lot after SL is widened
+* estimated loss at final SL must not exceed maximum_risk_amount
 ---
 
 ## Lot Size Calculation
@@ -1609,7 +1672,9 @@ Also verify:
 
 * Entry is executable.
 * Nearby liquidity has been swept or accounted for.
-* SL is outside the entire sweep wick.
+* Reversal Entry is not based only on the first POI touch or one rejection wick.
+* The complete sweep sequence and full liquidity-zone extreme were used for structural invalidation.
+* SL is outside the entire sweep sequence and liquidity zone.
 * SL is not inside an obvious liquidity pool.
 * SL includes an appropriate spread and volatility buffer.
 * TP is the nearest realistic major target.
