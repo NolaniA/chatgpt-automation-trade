@@ -18,12 +18,14 @@ from modules.metatrader5.current_price import get_current_price
 from modules.metatrader5.orders_get import get_orders_by_symbol
 from modules.metatrader5.positions_get import get_positions_by_symbol
 from modules.metatrader5.history_get import get_deal_history_by_symbol
+from modules.metatrader5.close_pending import run_close_pending
 from modules.metatrader5.fetch_ohlcv import MT5Config, MT5DataFeed
 from modules.metatrader5.send_order import MT5AutoTrader
 
 from modules.utils.merge_to_zip import create_zip_file
 from modules.utils.check_market import is_market_open
 from modules.utils.interval_time import wait_until_next_round
+from modules.utils.copy_rule_file import copy_rule_file
 
 from modules.utils.custom_print import print_log
 
@@ -281,6 +283,8 @@ def run_cycle(
             timeframes=timeframes,
         )
 
+        copy_rule_file()
+
         # 2. รวม JSON เป็น ZIP
         zip_path = create_zip_file()
         print_log(f"ZIP created: {zip_path}")
@@ -299,6 +303,8 @@ def run_cycle(
         )
 
         result = trader.run()
+
+        run_close_pending(file_name="result_gpt.json", dry_run=dry_run,)
 
         if result is None:
             print_log(
