@@ -147,7 +147,7 @@ class GptAnalyzer:
         try:
             stop_button.wait_for(
                 state="visible",
-                timeout=600_000,
+                timeout=700_000,
             )
         except PlaywrightTimeoutError:
             # คำตอบอาจเสร็จเร็วมากจนไม่ทันพบปุ่ม Stop
@@ -159,7 +159,7 @@ class GptAnalyzer:
 
         stop_button.wait_for(
             state="detached",
-            timeout=600_000,
+            timeout=700_000,
         )
 
 
@@ -260,7 +260,7 @@ class GptAnalyzer:
             str(data_zip_path)
         )
         # wait progress upload file
-        self.page.locator("button.cursor-wait").wait_for( state="detached", timeout=600_000)
+        self.page.locator("button.cursor-wait").wait_for( state="detached", timeout=700_000)
 
 
 
