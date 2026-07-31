@@ -291,8 +291,11 @@ def run_cycle(
 
         # 3. เปิด Edge profile และส่งข้อมูลให้ ChatGPT
         # setup_edge_profile()
-
-        gpt_runner()
+        try:
+            gpt_runner()
+        except Exception as e:
+            print_log(f"gpt runner: {e}")
+            return False
 
         # 4. อ่านผลวิเคราะห์และส่งคำสั่งเทรด
         trader = MT5AutoTrader(
