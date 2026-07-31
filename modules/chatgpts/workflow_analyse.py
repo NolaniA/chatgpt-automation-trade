@@ -345,7 +345,7 @@ def gpt_runner() -> None:
 
     except Exception as error:
         print_log(f"Fatal error: {error}")
-        raise SystemExit(1)
+        # raise SystemExit(1)
 
 
 
