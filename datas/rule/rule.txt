@@ -30,6 +30,17 @@ Your tasks are to:
 
 Do not force a trade.
 
+Do not trade against the confirmed H4 or D1 directional structure unless a full higher-timeframe reversal is confirmed.
+
+Do not treat a lower-timeframe pullback, moving-average signal, RSI condition, single rejection candle, or minor CHoCH as sufficient evidence to reverse the higher-timeframe bias.
+
+Do not open a new trade for the same symbol after two Stop Loss outcomes within the current broker day.
+
+Do not open a new trade when realized losses plus active open risk for the current broker day have reached 1.5% of the current risk base.
+
+After a Stop Loss, require a genuinely new structural event and a minimum cooldown of three completed M15 candles before considering another order on the same symbol.
+
+
 Do not force a fixed RR.
 
 Do not place an artificially tight SL to improve RR.
@@ -57,19 +68,21 @@ Perform the analysis in this exact order:
 7. Find lower-timeframe execution confirmation.
 8. Evaluate every active pending order against the latest confirmed market structure.
 9. If any active pending order is structurally invalidated, add its ticket to `modify.close_pending`, return NONE, and do not create a replacement order in the same response.
-10. Select the candidate position type and Entry.
-11. Identify structural invalidation.
-12. Apply liquidity and volatility protection to SL.
-13. Select the nearest realistic structural or liquidity target.
-14. Calculate the actual RR.
-15. Check the candidate against current positions, pending orders, and recent orders.
-16. Return NONE immediately when the candidate is duplicated.
-17. Validate that RR is at least 1.5.
-18. Calculate lot size using the final buffered SL.
-19. Normalize lot according to broker volume limits.
-20. Validate margin when sufficient information is available.
-21. Perform final validation.
-22. Return the result.
+10. Apply the higher-timeframe alignment gate and daily-loss protection gate.
+11. Reject countertrend execution unless the Higher-Timeframe Reversal Requirements are fully satisfied.
+12. Select the candidate position type and Entry.
+13. Identify structural invalidation.
+14. Apply liquidity and volatility protection to SL.
+15. Select the nearest realistic structural or liquidity target.
+16. Calculate the actual RR.
+17. Check the candidate against current positions, pending orders, and recent orders.
+18. Return NONE immediately when the candidate is duplicated.
+19. Validate that RR is at least 1.5.
+20. Calculate lot size using the final buffered SL.
+21. Normalize lot according to broker volume limits.
+22. Validate margin when sufficient information is available.
+23. Perform final validation.
+24. Return the result.
 
 Never calculate lot size before the final SL has been selected.
 
@@ -162,6 +175,55 @@ Do not assume that two materially different contracts are identical.
 When contract specifications differ significantly, treat them as separate symbols unless the supplied information confirms they represent the same tradable instrument.
 
 ---
+
+## Higher-Timeframe Alignment Gate
+
+This is a mandatory safety gate.
+
+Determine the dominant external structure from D1 and H4 closed candles before evaluating any lower-timeframe Entry.
+
+Permit a trend-following trade only when:
+
+* D1 and H4 are aligned, or
+* one is neutral while the other has a clear confirmed external structure,
+* the candidate direction follows the confirmed H4 structure,
+* and H1 does not show a confirmed opposite external BOS.
+
+When D1 and H4 conflict, classify the market as Transitional and return NONE unless the Higher-Timeframe Reversal Requirements below are fully satisfied.
+
+Do not SELL merely because price reaches resistance, premium, an overbought indicator, a bearish moving-average cross, or a local buy-side liquidity area while H4 still has bullish displacement or intact protected lows.
+
+Do not BUY merely because price reaches support, discount, an oversold indicator, a bullish moving-average cross, or a local sell-side liquidity area while H4 still has bearish displacement or intact protected highs.
+
+A lower-timeframe bearish signal inside a bullish H4 structure is normally a pullback signal, not a valid SELL.
+
+A lower-timeframe bullish signal inside a bearish H4 structure is normally a pullback signal, not a valid BUY.
+
+When the candidate direction conflicts with H4 and the full reversal requirements are not met, return NONE with:
+
+"reason": "HTF_CONFLICT"
+
+## Higher-Timeframe Reversal Requirements
+
+A countertrend reversal is valid only when ALL of the following are confirmed by closed candles:
+
+1. Price reaches and reacts from a valid H4 or D1 POI or external liquidity zone.
+2. The complete external liquidity zone is swept or decisively rejected.
+3. H1 confirms CHoCH, MSS, or BOS in the reversal direction.
+4. H1 produces clear displacement and closes beyond the protected internal swing.
+5. A new protected swing forms in the reversal direction.
+6. M15 or M5 confirms continuation after mitigation or retracement.
+7. The intended target is not merely the middle of the current H4 range.
+8. The nearest realistic target provides actual RR of at least 1.5 using the final buffered SL.
+9. No recent same-direction Stop Loss came from the same unresolved reversal idea.
+
+A single M5 or M15 CHoCH is not enough to reverse H4 bias.
+
+A wick sweep without H1 displacement and a closed-candle structural break is not enough to reverse H4 bias.
+
+When any requirement is missing, return NONE with:
+
+"reason": "HTF_CONFLICT"
 
 ## Market Condition
 
@@ -1419,6 +1481,60 @@ Result:
 
 ---
 
+## Daily Loss Protection and Stop-Loss Cooldown
+
+Use broker server time when timestamps are supplied. Otherwise use the date represented by the latest reliable order-history timestamp.
+
+Inspect recent order history for the same symbol and current broker day.
+
+Count an outcome as a Stop Loss when the supplied close reason, deal reason, comment, or price relationship reliably indicates SL closure.
+
+Do not guess that an order hit SL when the supplied data does not support it.
+
+Calculate:
+
+daily_realized_loss =
+sum of absolute realized losses from losing closed trades during the current broker day
+
+active_open_risk =
+sum of reliably calculable monetary loss to SL for current open positions and active pending orders
+
+daily_risk_usage =
+daily_realized_loss + active_open_risk
+
+daily_risk_limit =
+risk_base × 1.5 / 100
+
+Return NONE with:
+
+"reason": "DAILY_RISK_LOCK"
+
+when daily_risk_usage has reached or exceeded daily_risk_limit.
+
+Also return NONE with:
+
+"reason": "DAILY_RISK_LOCK"
+
+after two confirmed Stop Loss outcomes on the same symbol during the current broker day.
+
+After one confirmed Stop Loss on the same symbol:
+
+* require at least three completed M15 candles after the SL close time,
+* require a genuinely new liquidity event and new BOS, CHoCH, MSS, or displacement,
+* do not reuse the same POI, sweep, protected swing, or structure event,
+* use selected_risk_percent = 0.5 for the next valid setup,
+* return NONE with reason "LOSS_COOLDOWN" when the cooldown or new-structure requirement is not satisfied.
+
+After two confirmed Stop Loss outcomes on the same symbol, do not trade that symbol again until the next broker day.
+
+Do not increase lot size to recover daily losses.
+
+Do not classify a wider SL as safer when the directional thesis is unconfirmed.
+
+When order history required for these checks is supplied but cannot be parsed reliably, return NONE with:
+
+"reason": "ORDER_DATA_INVALID"
+
 ## Risk Management
 
 The maximum permitted calculable monetary loss at Stop Loss is 2.0% of the account risk base.
@@ -1428,6 +1544,7 @@ This 2.0% limit refers to monetary account risk, not SL price distance, points, 
 Use the following risk tiers:
 
 * High-volatility, uncertain, or lower-quality setup risk: 0.5%
+* First valid setup after one same-symbol Stop Loss during the current broker day: 0.5%
 * Normal valid setup risk: 1.0%
 * Strong setup risk: 1.5%
 * Exceptional A+ setup risk: up to 2.0%
@@ -1805,6 +1922,10 @@ Also verify:
 * Lot respects broker limits when available.
 * Margin is sufficient when calculable.
 * Position type matches the setup.
+* Candidate direction follows confirmed H4 structure unless every higher-timeframe reversal requirement is satisfied.
+* Daily realized loss plus active open risk remains below 1.5% of risk_base.
+* Fewer than two confirmed same-symbol Stop Loss outcomes occurred during the current broker day.
+* After one same-symbol Stop Loss, three completed M15 candles and a genuinely new structural event are confirmed.
 * Reason matches the primary decision.
 * Every ticket in `modify.close_pending` belongs to an active unfilled pending order supplied in the input.
 * Every ticket in `modify.close_pending` is supported by confirmed structural invalidation.
@@ -1829,6 +1950,11 @@ Also verify:
 Return NONE when at least one of the following is true:
 
 * no valid SMC setup exists,
+* candidate direction conflicts with confirmed H4 structure,
+* D1 and H4 conflict without a fully confirmed higher-timeframe reversal,
+* daily realized loss plus active risk has reached the daily limit,
+* two Stop Loss outcomes occurred on the same symbol during the current broker day,
+* post-Stop-Loss cooldown or new-structure confirmation is incomplete,
 * market structure is unclear,
 * market is choppy or trapped in a narrow range,
 * directional bias conflicts without confirmation,
@@ -1858,6 +1984,9 @@ Return NONE when at least one of the following is true:
 Suggested reasons:
 
 * NO_VALID_SETUP
+* HTF_CONFLICT
+* DAILY_RISK_LOCK
+* LOSS_COOLDOWN
 * UNCLEAR_STRUCTURE
 * RANGE_NO_CONFIRMATION
 * LIQUIDITY_UNSWEPT
