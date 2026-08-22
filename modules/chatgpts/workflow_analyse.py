@@ -171,7 +171,7 @@ class GptAnalyzer:
         #     "#code-block-viewer pre"
         # ).last
         result_locator = self.page.locator(
-            "div.cm-content"
+            "div .cm-content"
         ).last
 
         result_locator.wait_for(
