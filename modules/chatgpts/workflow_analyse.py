@@ -167,16 +167,16 @@ class GptAnalyzer:
         """
         อ่าน JSON จาก code block ของคำตอบ
         """
-        # result_locator = self.page.locator(
-        #     "#code-block-viewer pre"
-        # ).last
         result_locator = self.page.locator(
-            "div .cm-content"
+            "#code-block-viewer pre"
         ).last
+        # result_locator = self.page.locator(
+        #     "div .cm-content"
+        # ).last
 
         result_locator.wait_for(
             state="attached",
-            timeout=60_000,
+            timeout=90_000,
         )
 
         result = result_locator.inner_text().strip()
