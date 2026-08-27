@@ -30,19 +30,13 @@ Your tasks are to:
 
 Do not force a trade.
 
-Trade only in the direction of the confirmed intraday scalping trend.
+Trade only in the direction of the confirmed trend. Countertrend entries are not permitted.
 
-For this profile, the confirmed intraday direction is determined primarily by H1 + M15 alignment.
-A candidate that opposes H1 + M15 is countertrend and is not permitted.
-H4 is higher-timeframe context and quality grading; H4 opposition alone must not automatically force NONE when H1 + M15 show a clean directional scalp with sufficient room to the next H4 barrier.
+Use H4 and H1 to define the active trend, M15 and M5 to define the intraday setup, and M1 only to refine execution. D1 is macro context and must be checked for major opposing structure, but D1 alone must not create a countertrend scalping signal.
 
-Use D1 and H4 as macro/higher-timeframe context, H1 + M15 to define the active intraday scalping direction, M5 to define and confirm the setup, and M1 only to refine execution.
+Do not treat a lower-timeframe pullback, moving-average signal, RSI condition, or single rejection candle as sufficient evidence to trade against the confirmed H4/H1 trend.
 
-D1 and H4 must be checked for major opposing support/resistance, swing barriers, and available reward space, but neither D1 nor H4 alone may reverse a confirmed H1 + M15 scalping direction.
-
-Do not treat an M5/M1 pullback, moving-average signal, RSI condition, or single rejection candle as sufficient evidence to trade against the confirmed H1 + M15 intraday direction.
-
-Do not open a new trade when realized losses plus active open risk for the current broker day have reached 2.0% of the current risk base.
+Do not open a new trade when realized losses plus active open risk for the current broker day have reached 1.5% of the current risk base.
 
 After any Stop Loss, require a genuinely new structural event and a minimum cooldown of three completed M5 candles before considering another order on the same symbol.
 
@@ -66,16 +60,16 @@ Do not reject a valid Price Action setup merely because one optional indicator, 
 Perform the analysis in this exact order:
 
 1. Parse and validate supplied market, account, symbol, and order data.
-2. Determine D1/H4 macro context and the active H1/M15 intraday scalping direction.
-3. Identify D1/H4 context structure and H1/M15 intraday swing structure using HH/HL, LH/LL, ranges, and key swing breaks.
+2. Determine the active H4/H1 trend and D1 macro context.
+3. Identify higher-timeframe and intraday swing structure using HH/HL, LH/LL, ranges, and key swing breaks.
 4. Identify important support/resistance, previous swing highs/lows, session highs/lows, and consolidation boundaries.
 5. Identify valid Price Action entry areas such as pullback zones, breakout-retest levels, failed-breakout zones, and structural support/resistance.
 6. Determine whether price has confirmed acceptance or rejection at the relevant level before Entry.
-7. Require H1 + M15 directional alignment, then find an M5 continuation setup and optional M1 execution refinement.
+7. Find an M15/M5 trend-continuation setup and M5/M1 execution confirmation.
 8. Evaluate every active pending order against the latest confirmed market structure.
 9. If any active pending order is structurally invalidated, add its ticket to `modify.close_pending`, return NONE, and do not create a replacement order in the same response.
-10. Apply the scalping alignment/context gate and daily-loss protection gate.
-11. Reject every candidate that opposes the confirmed H1 + M15 intraday direction. H4 opposition alone is not an automatic rejection.
+10. Apply the higher-timeframe alignment gate and daily-loss protection gate.
+11. Reject every countertrend candidate. Only trend-continuation execution is permitted.
 12. Select the candidate position type and Entry.
 13. Identify structural invalidation.
 14. Apply spread, wick, and volatility protection to SL.
@@ -83,7 +77,7 @@ Perform the analysis in this exact order:
 16. Calculate the actual RR.
 17. Check the candidate against current positions, pending orders, and recent orders.
 18. Return NONE immediately when the candidate is duplicated.
-19. Validate that RR is at least 1.2.
+19. Validate that RR is at least 1.5.
 20. Calculate lot size using the final buffered SL.
 21. Normalize lot according to broker volume limits.
 22. Validate margin when sufficient information is available.
@@ -186,80 +180,51 @@ When contract specifications differ significantly, treat them as separate symbol
 
 This is a mandatory safety gate.
 
-Determine market context and the active scalping direction from closed candles before evaluating Entry.
+Determine the active trend from closed candles before evaluating Entry.
 
-Timeframe hierarchy for this scalping profile:
+Timeframe hierarchy for this scalping strategy:
 
 * D1: macro context, major support/resistance, major swing highs/lows, and broad volatility context only.
-* H4: higher-timeframe context, major swing structure, major support/resistance, and setup quality grading. H4 is not an automatic directional veto.
-* H1: primary intraday directional leg.
-* M15: confirms the H1 intraday direction and locates pullback, consolidation, breakout/retest, failed breakout, and setup zones.
-* M5: primary setup and execution confirmation timeframe.
-* M1: optional Entry refinement only; M1 must never reverse H1 + M15 direction.
+* H4: primary trend direction using swing structure, trend progression, and major support/resistance.
+* H1: confirms that the H4 trend is still active and defines the current intraday leg.
+* M15: locates the pullback, consolidation, breakout/retest, failed breakout, and setup level.
+* M5: primary execution confirmation.
+* M1: optional Entry refinement only.
 
-Determine structure primarily from closed-candle swing behavior:
+Determine trend primarily from closed-candle swing structure:
 
 * Bullish: a meaningful sequence of higher highs and higher lows, or a confirmed upside break followed by successful support/retest behavior.
 * Bearish: a meaningful sequence of lower lows and lower highs, or a confirmed downside break followed by successful resistance/retest behavior.
 * Ranging: repeated two-sided rejection between clear boundaries without sustained directional progress.
-* Transitional: prior intraday structure is damaged but the opposite H1/M15 direction is not yet confirmed.
-
-### Intraday Direction Gate
+* Transitional: prior trend structure is damaged but the opposite trend is not yet confirmed.
 
 Permit a BUY candidate only when:
 
-* H1 is bullish, or clearly advancing without a confirmed breakdown of the important bullish swing structure,
-* M15 is bullish and confirms the same intraday direction,
-* M5 shows bullish continuation after a pullback, support hold, breakout/retest, failed downside breakout, higher-low continuation, strong bullish rejection, or momentum continuation,
-* at least one relevant closed M5 candle confirms execution,
-* and the Entry has sufficient room before the nearest important D1/H4 opposing barrier.
+* H4 structure is bullish or clearly advancing,
+* H1 is bullish or neutral without a confirmed breakdown of the important bullish swing structure,
+* M15/M5 show bullish trend continuation after a pullback, support hold, breakout and retest, failed downside breakout, strong bullish rejection, or momentum continuation,
+* at least one closed-candle confirmation supports continuation,
+* and the Entry is not directly beneath a major D1/H4 resistance barrier that removes realistic reward space.
 
 Permit a SELL candidate only when:
 
-* H1 is bearish, or clearly declining without a confirmed breakout above the important bearish swing structure,
-* M15 is bearish and confirms the same intraday direction,
-* M5 shows bearish continuation after a rally, resistance hold, breakdown/retest, failed upside breakout, lower-high continuation, strong bearish rejection, or momentum continuation,
-* at least one relevant closed M5 candle confirms execution,
-* and the Entry has sufficient room before the nearest important D1/H4 opposing barrier.
+* H4 structure is bearish or clearly declining,
+* H1 is bearish or neutral without a confirmed breakout above the important bearish swing structure,
+* M15/M5 show bearish trend continuation after a pullback, resistance hold, breakdown and retest, failed upside breakout, strong bearish rejection, or momentum continuation,
+* at least one closed-candle confirmation supports continuation,
+* and the Entry is not directly above a major D1/H4 support barrier that removes realistic reward space.
 
-If H1 and M15 clearly conflict, classify the intraday market as Transitional and return NONE with:
+If H4 and H1 clearly conflict, classify the market as Transitional and return NONE.
 
-"reason": "HTF_CONFLICT"
+If H4 is neutral or ranging, return NONE unless H1 and M15 have a clean directional continuation structure inside a sufficiently wide H4 range with clear room to the next target.
 
-M5 and M1 must not override H1 + M15 conflict.
+Do not open a countertrend trade merely because lower timeframes show a false breakout, rejection candle, RSI extreme, moving-average cross, or local support/resistance reaction.
 
-### H4 Context and Setup Quality
+A lower-timeframe bearish signal inside a bullish H4/H1 trend is a pullback or exit warning, not a SELL setup.
 
-H4 is context, not an automatic hard filter.
+A lower-timeframe bullish signal inside a bearish H4/H1 trend is a pullback or exit warning, not a BUY setup.
 
-Classify setup quality as:
-
-* A+ aligned scalp: H4 + H1 + M15 are aligned, M5 confirms, structure is clean, and the target path is unobstructed.
-* Normal aligned scalp: H1 + M15 are aligned and M5 confirms; H4 is neutral, ranging, or not strongly opposing.
-* Counter-H4 intraday scalp: H1 + M15 are aligned and M5 confirms, but H4 points in the opposite direction.
-
-A Counter-H4 intraday scalp is permitted only when ALL of the following are true:
-
-* H1 + M15 alignment is clear and based on closed-candle structure,
-* M5 continuation confirmation is complete,
-* price is not entering directly into an H4 support/resistance or major swing barrier,
-* there is sufficient room to the nearest realistic M5/M15 target,
-* the nearest realistic target provides RR of at least 1.2 using the final buffered SL,
-* no major D1/H4 barrier lies before the target,
-* selected_risk_percent is limited to 0.25,
-* and TP remains an intraday M5/M15 objective rather than a distant H1/H4 target.
-
-If H4 opposition removes realistic reward space or places Entry directly into a major barrier, return NONE with:
-
-"reason": "TARGET_OBSTRUCTED"
-
-If H4 is neutral or ranging, H1 + M15 may still define a valid scalp inside the H4 range only when the range is sufficiently wide and the path to the next target is clear.
-
-A lower-timeframe bearish signal inside a bullish H1 + M15 intraday trend is a pullback or exit warning, not a SELL setup.
-
-A lower-timeframe bullish signal inside a bearish H1 + M15 intraday trend is a pullback or exit warning, not a BUY setup.
-
-When the candidate direction conflicts with the confirmed H1 + M15 intraday direction, return NONE with:
+When the candidate direction conflicts with the confirmed H4/H1 trend, return NONE with:
 
 "reason": "HTF_CONFLICT"
 
@@ -306,13 +271,11 @@ Do not invent a breakout, false breakout, trendline reaction, support/resistance
 
 A trade may be considered valid only when ALL of the following are true:
 
-1. A clear H1 + M15 intraday direction exists and the candidate follows that direction.
+1. A clear H4/H1 trend exists and the candidate follows that trend.
 
-2. H4 context has been checked and no major D1/H4 barrier removes realistic reward space. H4 opposition alone is not an automatic rejection.
+2. Price interacts with a meaningful support/resistance level, swing area, pullback zone, breakout/retest level, range boundary, or other clearly visible Price Action structure.
 
-3. Price interacts with a meaningful support/resistance level, swing area, pullback zone, breakout/retest level, range boundary, or other clearly visible Price Action structure.
-
-4. At least one reliable closed M5 execution confirmation exists, such as:
+3. At least one reliable closed-candle execution confirmation exists, such as:
 
    * breakout followed by acceptance or successful retest
    * breakdown followed by acceptance or successful retest
@@ -322,47 +285,47 @@ A trade may be considered valid only when ALL of the following are true:
    * momentum/expansion candle that confirms continuation
    * successful higher-low or lower-high formation followed by continuation
 
-5. A logical structural invalidation point can be identified.
+4. A logical structural invalidation point can be identified.
 
-6. SL can be placed beyond the relevant M5/M15 setup swing or level with sufficient spread, wick, and volatility buffer.
+5. SL can be placed beyond the relevant swing/level with sufficient spread, wick, and volatility buffer.
 
-7. A realistic M5/M15 structural target exists.
+6. A realistic structural target exists.
 
-8. The path to the target is not blocked by a major opposing level.
+7. The path to the target is not blocked by a major opposing level.
 
-9. The actual RR using the buffered SL is at least 1.2.
+8. The actual RR using the buffered SL is at least 1.5.
 
-10. The candidate does not duplicate an existing or recent order.
+9. The candidate does not duplicate an existing or recent order.
 
-11. Safe lot sizing is possible.
+10. Safe lot sizing is possible.
 
 A false breakout is useful confirmation but is not mandatory when all of the following already exist:
 
-* confirmed H1 + M15 directional structure,
-* clear M5 momentum continuation,
+* confirmed directional structure,
+* clear momentum continuation,
 * valid support/resistance or retest level,
 * identifiable structural invalidation,
-* sufficient room to a logical intraday target.
+* sufficient room to a logical target.
 
 For a trend-continuation setup after a lower-timeframe pullback, a single touch or one rejection wick alone is not sufficient.
-Require a closed M5 confirmation such as a successful retest, strong rejection close, engulfing sequence, breakout/breakdown continuation, higher-low/lower-high continuation, or momentum expansion before Entry.
-
-M1 may refine Entry but must not be the sole setup confirmation.
+Require a closed-candle confirmation such as a successful retest, strong rejection close, engulfing sequence, breakout/breakdown continuation, or momentum expansion before Entry.
 
 Do not require breakout, false breakout, engulfing candle, retest, volume confirmation, and momentum expansion to occur simultaneously.
 
+---
+
 ## Timeframe Roles
 
-Use higher timeframes for context and lower timeframes for scalping direction, setup, and execution.
+Use higher timeframes for trend context and lower timeframes for scalping execution.
 
 Required roles:
 
 * D1: macro context, major support/resistance, major swing highs/lows, and broad volatility context.
-* H4: higher-timeframe context, major swing structure, major barriers, volatility context, and setup-quality grading.
-* H1: primary intraday directional leg.
-* M15: confirmation of H1 direction plus setup-zone context, pullback, range boundary, support/resistance, breakout/retest, and intraday target mapping.
-* M5: primary setup confirmation, execution confirmation, and structural invalidation timeframe for most scalps.
-* M1: optional Entry refinement only; never use M1 to reverse the H1 + M15 intraday direction.
+* H4: primary trend direction and major swing structure.
+* H1: active intraday trend leg and confirmation that H4 direction remains valid.
+* M15: setup structure, pullback, range boundary, support/resistance, and breakout/retest context.
+* M5: primary execution confirmation and structural invalidation timeframe for most scalps.
+* M1: optional refinement of Entry only; never use it to reverse the H4/H1 trend.
 
 Use closed candles to confirm:
 
@@ -382,13 +345,11 @@ Do not use a forming candle as the sole structural confirmation.
 
 A missing or stale single timeframe must not automatically invalidate the analysis when sufficient reliable information exists on the remaining relevant timeframes.
 
-H1 + M15 alignment is required for normal directional execution.
-M5 confirms the setup.
-M1 refines Entry only.
-
 M1 must not override clear M5, M15, H1, or H4 structure.
 
 For normal scalping execution, prefer M5 structural invalidation when the setup is formed on M5. When the setup is formed on M15, use M15 invalidation even if M1 refines the Entry.
+
+---
 
 ## Volume Rules
 
@@ -406,42 +367,37 @@ Do not reject an otherwise valid Price Action setup merely because real volume i
 
 ## Directional Bias
 
-Determine the intraday bias using the strongest available combination of:
+Determine bias using the strongest available combination of:
 
-* H1 + M15 swing structure,
+* H4/H1 swing structure,
 * sequence of HH/HL or LH/LL,
-* break and hold of important intraday swing levels,
+* break and hold of major swing levels,
 * support/resistance behavior,
 * pullback quality,
 * breakout/retest behavior,
-* M5 momentum and close strength,
+* momentum and close strength,
 * session or previous swing levels,
-* trend-continuation confirmation,
-* H4 context and distance to the nearest major opposing barrier.
+* trend-continuation confirmation.
 
-Bullish intraday bias is preferred when:
+Bullish bias is preferred when:
 
-* H1 structure is bullish or clearly advancing,
-* M15 confirms bullish structure,
-* pullbacks hold above important intraday support or form a valid higher low,
+* higher-timeframe structure is bullish,
+* pullbacks hold above important support or form a valid higher low,
 * resistance breaks are accepted or successfully retested,
-* and M5 bullish execution confirmation exists.
+* and bullish execution confirmation exists.
 
-Bearish intraday bias is preferred when:
+Bearish bias is preferred when:
 
-* H1 structure is bearish or clearly declining,
-* M15 confirms bearish structure,
-* rallies fail below important intraday resistance or form a valid lower high,
+* higher-timeframe structure is bearish,
+* rallies fail below important resistance or form a valid lower high,
 * support breaks are accepted or successfully retested,
-* and M5 bearish execution confirmation exists.
+* and bearish execution confirmation exists.
 
-When H1 and M15 conflict, classify the intraday market as Transitional and return NONE.
-M5/M1 may refine a continuation Entry but must not override H1 + M15 direction.
-
-H4 opposition alone does not force NONE, but it lowers setup quality and must be checked for nearby barriers.
-A valid Counter-H4 intraday scalp must satisfy the stricter conditions in the Scalping Alignment Gate and use selected_risk_percent = 0.25.
+When H4 and H1 conflict, classify the market as Transitional and return NONE. Lower timeframes may refine a continuation Entry but must not override the confirmed H4/H1 trend.
 
 When price is trapped between nearby support and resistance without momentum or structural confirmation, classify the market as Ranging and return NONE.
+
+---
 
 ## Price Action Entry Protection
 
@@ -483,7 +439,7 @@ For BUY setups, prefer one of these Price Action sequences:
 1. Pullback holds support and forms a higher low, then bullish continuation confirms.
 2. Resistance breaks, price retests the broken level as support, then closes bullishly.
 3. Price makes a false breakdown below support, closes back above it, and bullish follow-through confirms.
-4. A strong bullish rejection/engulfing sequence forms at confirmed support within the H1 + M15 bullish intraday trend.
+4. A strong bullish rejection/engulfing sequence forms at confirmed support within the H4/H1 uptrend.
 
 Use the lowest meaningful wick or swing belonging to the confirmed setup sequence as structural invalidation.
 Place final SL below that structural extreme plus the adaptive execution buffer.
@@ -498,7 +454,7 @@ For SELL setups, prefer one of these Price Action sequences:
 1. Rally fails at resistance and forms a lower high, then bearish continuation confirms.
 2. Support breaks, price retests the broken level as resistance, then closes bearishly.
 3. Price makes a false breakout above resistance, closes back below it, and bearish follow-through confirms.
-4. A strong bearish rejection/engulfing sequence forms at confirmed resistance within the H1 + M15 bearish intraday trend.
+4. A strong bearish rejection/engulfing sequence forms at confirmed resistance within the H4/H1 downtrend.
 
 Use the highest meaningful wick or swing belonging to the confirmed setup sequence as structural invalidation.
 Place final SL above that structural extreme plus the adaptive execution buffer.
@@ -538,7 +494,7 @@ Do not place SL inside the normal wick/probing area around the structural level.
 
 ## Trade Decision Rules
 
-Every new candidate must follow the confirmed H1 + M15 intraday direction. BUY, SELL, LIMIT, and STOP orders that oppose H1 + M15 are not permitted. H4 opposition alone is allowed only under the Counter-H4 intraday scalp rules.
+Every new candidate must follow the confirmed H4/H1 trend. Countertrend BUY, SELL, LIMIT, and STOP orders are not permitted.
 
 Use:
 
@@ -559,7 +515,7 @@ A market order requires:
 * logical structural invalidation,
 * wick and volatility protection,
 * realistic target,
-* actual RR of at least 1.2,
+* actual RR of at least 1.5,
 * and no duplicate active order.
 
 Do not chase price after it has moved excessively far from the setup.
@@ -576,7 +532,7 @@ For BUY or SELL market orders, require:
 * nearby support/resistance and wick-probing behavior have been clearly accounted for,
 * structural SL with execution buffer,
 * realistic target,
-* actual RR of at least 1.2,
+* actual RR of at least 1.5,
 * no duplicate position or pending order.
 
 For BUY market orders, use current Ask when Ask is provided.
@@ -602,7 +558,7 @@ For BUY_LIMIT or SELL_LIMIT, require:
 * adequate execution buffer,
 * clear target,
 * sufficient room before the first major opposing obstacle,
-* actual RR of at least 1.2,
+* actual RR of at least 1.5,
 * no duplicate active or pending order.
 
 The pending Entry must correspond to a defensible Price Action level such as:
@@ -633,7 +589,7 @@ For BUY_STOP or SELL_STOP, require:
 * sufficient momentum/expansion potential,
 * enough room to the next logical target,
 * structural SL with execution buffer,
-* actual RR of at least 1.2,
+* actual RR of at least 1.5,
 * no duplicate active or pending order.
 
 Do not place a STOP order directly into:
@@ -770,7 +726,7 @@ Use the higher buffer range when:
 * the symbol frequently makes deep false breaks or long wick probes,
 * Entry is near repeated equal highs/lows or clustered wick extremes.
 
-When the required buffer makes RR lower than 1.2, return NONE.
+When the required buffer makes RR lower than 1.5, return NONE.
 Do not tighten SL, move Entry unrealistically, or extend TP to recover RR.
 
 When the required buffer exceeds 0.50 ATR beyond the structural extreme, normally return NONE with reason SL_BUFFER_TOO_WIDE unless a supplied higher-timeframe setup clearly justifies it.
@@ -912,7 +868,7 @@ Do not set TP at a fixed multiple of SL unless that price also matches a valid s
 
 When several targets exist, choose the first major target that provides valid RR.
 
-If the nearest realistic target produces RR below 1.2 using the buffered SL, return NONE.
+If the nearest realistic target produces RR below 1.5 using the buffered SL, return NONE.
 
 Do not extend TP to compensate for a wider SL.
 
@@ -935,7 +891,7 @@ If a major obstacle is likely to stop price before the proposed TP:
 
 * use the nearer obstacle as TP,
 * recalculate RR,
-* return NONE if RR falls below 1.2.
+* return NONE if RR falls below 1.5.
 
 A distant external target is valid only when:
 
@@ -1005,7 +961,7 @@ Do not target a fixed RR.
 
 Use these guidelines:
 
-* Minimum valid RR: 1.2
+* Minimum valid RR: 1.5
 * Normal preferred RR: 1.5 to 3.0
 * Strong continuation setup: 3.0 to 4.0 may be valid
 * RR above 4.0 is allowed only when it occurs naturally from structure
@@ -1021,7 +977,7 @@ RR above 4.0 requires:
 
 High RR does not automatically indicate a high-quality trade.
 
-If buffered SL causes RR to fall below 1.2, return NONE.
+If buffered SL causes RR to fall below 1.5, return NONE.
 
 Never tighten SL or extend TP merely to pass the minimum RR.
 
@@ -1550,7 +1506,7 @@ daily_risk_usage =
 daily_realized_loss + active_open_risk
 
 daily_risk_limit =
-risk_base × 2.0 / 100
+risk_base × 1.5 / 100
 
 Return NONE with:
 
@@ -1565,11 +1521,11 @@ After any confirmed Stop Loss on the same symbol:
 * require at least three completed M5 candles after the SL close time,
 * require a genuinely new Price Action event such as a new breakout/retest, failed breakout, rejection sequence, higher-low/lower-high formation, momentum expansion, or confirmed trend-continuation event,
 * do not reuse the same support/resistance level, failed-break event, swing, or structure event,
-* require the new candidate to remain aligned with the confirmed H1 + M15 intraday direction,
-* use selected_risk_percent = 0.25 for the next valid setup during the same broker day,
+* require the new candidate to remain aligned with the confirmed H4/H1 trend,
+* use selected_risk_percent = 0.5 for the next valid setup during the same broker day,
 * return NONE with reason "LOSS_COOLDOWN" when the cooldown or new-structure requirement is not satisfied.
 
-Repeated Stop Loss outcomes do not create an additional count-based lock. Continue to apply the cooldown, new-structure requirement, duplicate checks, scalping alignment gate, and daily monetary-risk limit to every new candidate.
+Repeated Stop Loss outcomes do not create an additional count-based lock. Continue to apply the cooldown, new-structure requirement, duplicate checks, trend-alignment gate, and daily monetary-risk limit to every new candidate.
 
 Do not increase lot size to recover daily losses.
 
@@ -1581,43 +1537,45 @@ When order history required for these checks is supplied but cannot be parsed re
 
 ## Risk Management
 
-The maximum permitted calculable monetary loss at Stop Loss is 1.0% of the account risk base.
+The maximum permitted calculable monetary loss at Stop Loss is 2.0% of the account risk base.
 
-This 1.0% limit refers to monetary account risk, not SL price distance, points, pips, ATR distance, margin usage, or leverage.
+This 2.0% limit refers to monetary account risk, not SL price distance, points, pips, ATR distance, margin usage, or leverage.
 
-Use the following risk tiers for this scalping profile:
+Use the following risk tiers:
 
-* Counter-H4, high-volatility, uncertain, lower-quality, or first setup after same-symbol Stop Loss: 0.25%
-* Normal valid H1 + M15 aligned scalp: 0.5%
-* Exceptional A+ scalp with H4 + H1 + M15 alignment: 1.0%
-* Absolute maximum risk at SL: 1.0%
+* High-volatility, uncertain, or lower-quality setup risk: 0.5%
+* First valid setup after any same-symbol Stop Loss during the current broker day: 0.5%
+* Normal valid setup risk: 1.0%
+* Strong setup risk: 1.5%
+* Exceptional A+ setup risk: up to 2.0%
+* Absolute maximum risk at SL: 2.0%
 
 Select `selected_risk_percent` before calculating lot size:
 
-* Use 0.25 when H4 opposes the H1 + M15 intraday direction, volatility is high, setup quality is uncertain, or this is the first valid setup after a same-symbol Stop Loss during the current broker day.
-* Use 0.5 for a normal valid H1 + M15 aligned scalp with M5 confirmation.
-* Use 1.0 only for an exceptional A+ setup that satisfies every 1.0% requirement below.
+* Use 0.5 for high-volatility, uncertain, or lower-quality setups.
+* Use 1.0 for normal valid setups.
+* Use 1.5 for strong setups.
+* Use 2.0 only for an exceptional A+ setup that satisfies every 2.0% requirement below.
 * Do not select arbitrary values between these risk tiers.
 
 selected_risk_percent =
-one of [0.25, 0.5, 1.0]
+one of [0.5, 1.0, 1.5, 2.0]
 
-Use 1.0% risk only when ALL of the following are true:
+Use 2.0% risk only when ALL of the following are true:
 
-* H4 + H1 + M15 structure are aligned in the candidate direction,
-* M5 execution structure confirms continuation,
+* higher-timeframe and execution-timeframe structure are aligned,
 * the relevant support/resistance reaction, retest, or false-break condition is clearly resolved,
-* closed-candle rejection, retest, breakout/breakdown continuation, engulfing sequence, higher-low/lower-high continuation, or clear momentum expansion is confirmed,
+* closed-candle rejection, retest, breakout/breakdown continuation, engulfing sequence, or clear momentum expansion is confirmed,
 * the selected Price Action level and structural invalidation are clear,
 * final SL includes the complete spread, wick, and volatility buffer,
 * recent volatility does not make execution abnormally uncertain,
 * the target path is not blocked by a major opposing level,
-* actual RR using the final buffered SL is at least 1.2,
+* actual RR using the final buffered SL is at least 1.5,
 * no duplicate, same-direction, or prohibited opposite exposure exists,
 * broker volume limits and margin requirements are valid when calculable.
 
-When any 1.0% A+ requirement is uncertain or unsupported, use 0.5% or 0.25%.
-Do not use 1.0% merely because RR is high.
+When any 2.0% requirement is uncertain or unsupported, use 1.5% or less.
+Do not use 2.0% merely because RR is high.
 
 Determine the account risk base as:
 
@@ -1640,7 +1598,7 @@ Requirements:
 Calculate:
 
 maximum_risk_amount =
-risk_base × 1.0 / 100
+risk_base × 2.0 / 100
 
 selected_risk_amount =
 risk_base × selected_risk_percent / 100
@@ -1658,8 +1616,8 @@ For a cent account:
 
 Risk requirements:
 
-* selected_risk_percent must be one of 0.25, 0.5, or 1.0,
-* selected_risk_percent must not exceed 1.0,
+* selected_risk_percent must be one of 0.5, 1.0, 1.5, or 2.0,
+* selected_risk_percent must not exceed 2.0,
 * estimated loss at final SL must not exceed maximum_risk_amount,
 * actual normalized risk at final SL must not exceed maximum_risk_amount,
 * widening SL must reduce lot size,
@@ -1670,6 +1628,8 @@ Risk requirements:
 
 When explicit commission or other unavoidable execution costs are supplied and can be calculated reliably, include them in estimated and actual risk.
 Do not invent missing commission, slippage, gap, or conversion costs.
+
+---
 
 ## Lot Size Calculation
 
@@ -1780,7 +1740,7 @@ If normalized_lot is below volume_min:
 4. Use volume_min only when BOTH are true:
 
    estimated_loss_at_volume_min <= maximum_risk_amount
-   estimated_risk_percent_at_volume_min <= 1.0
+   estimated_risk_percent_at_volume_min <= 2.0
 
 5. Otherwise return NONE with:
 
@@ -1800,7 +1760,7 @@ The order is valid only when BOTH are true:
 
 actual_risk <= maximum_risk_amount
 
-actual_risk_percent <= 1.0
+actual_risk_percent <= 2.0
 
 Requirements:
 
@@ -1808,9 +1768,9 @@ Requirements:
 * never round lot upward to meet volume_step or volume_min,
 * never modify Entry, final SL, or TP merely to allow a larger lot,
 * never keep the previous lot after final SL distance changes,
-* actual_risk must not exceed risk_amount except only when volume_min is required and the resulting risk still remains within the absolute 1.0% maximum,
+* actual_risk must not exceed risk_amount except only when volume_min is required and the resulting risk still remains within the absolute 2.0% maximum,
 * actual_risk must never exceed maximum_risk_amount,
-* actual_risk_percent must never exceed 1.0.
+* actual_risk_percent must never exceed 2.0.
 
 If:
 
@@ -1818,7 +1778,7 @@ actual_risk > maximum_risk_amount
 
 or:
 
-actual_risk_percent > 1.0
+actual_risk_percent > 2.0
 
 Then:
 
@@ -1828,7 +1788,7 @@ Then:
 4. Repeat until BOTH conditions are true:
 
    actual_risk <= maximum_risk_amount
-   actual_risk_percent <= 1.0
+   actual_risk_percent <= 2.0
 
 5. If normalized_lot becomes lower than volume_min or is not greater than zero, return NONE with:
 
@@ -1847,7 +1807,7 @@ Attempt all available lot-calculation methods first.
 Return NONE for lot-related reasons only when:
 
 * no valid lot-calculation method can be used,
-* minimum broker lot causes estimated loss above maximum_risk_amount or estimated risk above 1.0%,
+* minimum broker lot causes estimated loss above maximum_risk_amount or estimated risk above 2.0%,
 * estimated margin exceeds available free margin,
 * normalized lot is zero,
 * required currency conversion is unavailable.
@@ -1962,8 +1922,8 @@ Also verify:
 * Lot respects broker limits when available.
 * Margin is sufficient when calculable.
 * Position type matches the setup.
-* Candidate direction follows the confirmed H1 + M15 intraday direction; H4 opposition alone is handled by the Counter-H4 scalp rules.
-* Daily realized loss plus active open risk remains below 2.0% of risk_base.
+* Candidate direction follows the confirmed H4/H1 trend; countertrend execution is not permitted.
+* Daily realized loss plus active open risk remains below 1.5% of risk_base.
 * After any same-symbol Stop Loss, three completed M5 candles and a genuinely new structural event are confirmed before re-entry.
 * Reason matches the primary decision.
 * Every ticket in `modify.close_pending` belongs to an active unfilled pending order supplied in the input.
@@ -1971,14 +1931,14 @@ Also verify:
 * `modify.close_pending` contains no duplicate tickets.
 * When `modify.close_pending` is not empty, `type_position` is `NONE`, all numeric trade fields are zero, and reason is `PENDING_INVALIDATED`.
 * When no pending order requires closure, `modify.close_pending` is an empty list.
-* Monetary loss at final SL does not exceed 1.0% of risk_base.
+* Monetary loss at final SL does not exceed 2.0% of risk_base.
 * Lot size was calculated using the final buffered SL.
 * Lot was reduced when the SL distance increased.
-* No price-based SL distance was interpreted as the 1.0% account-risk limit.
-* `selected_risk_percent` is one of 0.25, 0.5, or 1.0.
-* A 1.0% selection satisfies every exceptional A+ requirement.
+* No price-based SL distance was interpreted as the 2.0% account-risk limit.
+* `selected_risk_percent` is one of 0.5, 1.0, 1.5, or 2.0.
+* A 2.0% selection satisfies every exceptional A+ requirement.
 * `actual_risk` does not exceed `maximum_risk_amount`.
-* `actual_risk_percent` does not exceed 1.0.
+* `actual_risk_percent` does not exceed 2.0.
 * Explicit calculable commission or execution costs were included when supplied.
 * Balance, equity, tick value, risk, and margin units are consistent, including for cent accounts.
 
@@ -1989,8 +1949,8 @@ Also verify:
 Return NONE when at least one of the following is true:
 
 * no valid Price Action setup exists,
-* candidate direction conflicts with the confirmed H1 + M15 intraday direction,
-* H1 and M15 clearly conflict or no reliable active intraday direction exists,
+* candidate direction conflicts with the confirmed H4/H1 trend,
+* H4 and H1 clearly conflict or no reliable active trend exists,
 * daily realized loss plus active risk has reached the daily limit,
 * post-Stop-Loss cooldown or new-structure confirmation is incomplete,
 * market structure is unclear,
@@ -2004,7 +1964,7 @@ Return NONE when at least one of the following is true:
 * required SL buffer is excessively wide,
 * no logical target exists,
 * target is obstructed,
-* RR using buffered SL is below 1.2,
+* RR using buffered SL is below 1.5,
 * one or more active pending orders are structurally invalidated and must be closed first,
 * an active duplicate order exists,
 * a same-direction position already exists,
