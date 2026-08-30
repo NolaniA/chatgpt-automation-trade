@@ -10,6 +10,7 @@ from playwright.sync_api import (
     sync_playwright,
 )
 
+from modules.setup_browser.edge_profile import setup_edge_profile, kill_edge_processes
 
 class GptAnalyzer:
     def __init__(self, playwright: Playwright):
@@ -206,6 +207,8 @@ class GptAnalyzer:
         self,
         file_path: Optional[Path] = None,
     ) -> dict:
+
+
         """
         อัปโหลดไฟล์ ส่ง prompt รอผลลัพธ์ และบันทึก JSON
         """
@@ -304,6 +307,9 @@ class GptAnalyzer:
 
         print_log("Analysis completed successfully")
 
+
+
+
         return parsed_result
 
     def run(self) -> dict:
@@ -333,10 +339,19 @@ class GptAnalyzer:
 def gpt_runner() -> None:
 
     try:
+        """
+        initial open browser edge
+        """
+        setup_edge_profile()
+
         with sync_playwright() as playwright:
             analyzer = GptAnalyzer(playwright)
             result = analyzer.run()
 
+        """
+        finish analyze
+        """
+        kill_edge_processes()
             # print_log("GPT result:")
             # print_log(
             #     json.dumps(
