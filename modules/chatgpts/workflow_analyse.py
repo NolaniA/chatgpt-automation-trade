@@ -31,7 +31,7 @@ class GptAnalyzer:
             self.page = self.context.new_page()
 
         self.url_gpt_project = (
-            "https://chatgpt.com/g/g-p-6a85c11b6e608191b5e1e642bbcb87ad/project"
+            "https://chatgpt.com/g/g-p-6a95a52d51ec8191aae129a69553647f/project"
         )
 
         self.path_data_zip = Path(
