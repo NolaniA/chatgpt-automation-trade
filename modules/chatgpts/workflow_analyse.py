@@ -284,13 +284,13 @@ class GptAnalyzer:
 
         send_button.click()
 
-        self.page.wait_for_url(
-            lambda url: str(url) != old_url,
-            timeout=60_000,
-        )
+        # self.page.wait_for_url(
+        #     lambda url: str(url) != old_url,
+        #     timeout=60_000,
+        # )
 
 
-        self.page.reload(wait_until="domcontentloaded", timeout=60_000,)
+        # self.page.reload(wait_until="domcontentloaded", timeout=60_000,)
 
         print_log("Waiting for GPT response")
 
