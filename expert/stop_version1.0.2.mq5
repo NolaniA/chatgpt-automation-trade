@@ -13,15 +13,15 @@
 // - SELL recovery requires SELL-side profit >= MinRecoveryProfit and
 //   candle close below the SELL anchor by RecoveryStepPoint.
 // - The latest recovery price becomes the next anchor.
-// - Recovery direction stays locked until BasketTargetProfit is reached.
+// - BUY and SELL Recovery use separate anchors and can switch direction.
 // - Designed for MT5 Hedging accounts.
 
 #property copyright "Copyright 2025, MetaQuotes Ltd."
 #property link      "https://www.mql5.com"
-#property version   "1.20"
+#property version   "1.30"
 #property description "Hedge Recovery EA: Candle Close + Profit + Distance"
 #property description "Uses prices[1] close, profit threshold and recovery distance."
-#property description "Recovery direction stays locked until the basket is closed."
+#property description "BUY and SELL recovery can switch direction using separate anchors."
 
 #include <Trade/Trade.mqh>
 
@@ -35,7 +35,7 @@ input int CandleRate = 10;
 
 input double LotSize = 0.01;
 
-input int DistancePoint = 2500;
+input int DistancePoint = 1500;
 
 input int SlippagePoint = 20;
 
@@ -70,12 +70,13 @@ int PendingSell = 0;
 int PositionBuy = 0;
 int PositionSell = 0;
 
-double LastRecoveryPrice = 0;
+// Anchor ของ Recovery แต่ละฝั่งแยกจากกัน
+// 0 = ยังไม่มี Recovery ฝั่งนั้น
+double LastRecoveryBuyPrice = 0;
+double LastRecoverySellPrice = 0;
 
-//  1 = BUY recovery
-// -1 = SELL recovery
-//  0 = ยังไม่เริ่ม recovery
-int RecoveryDirection = 0;
+// ป้องกันเปิด Recovery ซ้ำจากแท่งปิดเดียวกัน
+datetime LastRecoverySignalBarTime = 0;
 
 
 //+------------------------------------------------------------------+
@@ -1147,16 +1148,24 @@ bool OpenRecoveryBuy()
 //|                                                                  |
 //| LOGIC: Candle Close + Profit + Distance                          |
 //|                                                                  |
-//| FIRST RECOVERY                                                   |
-//| BUY:  Close[1] >= BUY anchor  + RecoveryStepPoint                |
-//|       AND buyProfit >= MinRecoveryProfit                         |
-//| SELL: Close[1] <= SELL anchor - RecoveryStepPoint                |
-//|       AND sellProfit >= MinRecoveryProfit                        |
+//| TWO-WAY RECOVERY                                                 |
+//| - BUY และ SELL Recovery เปิดสลับกันได้                           |
+//| - ไม่มี RecoveryDirection Lock                                   |
+//| - BUY และ SELL มี Anchor แยกกัน                                  |
+//| - ใช้เฉพาะ prices[1].close = แท่งที่ปิดแล้ว                      |
+//| - 1 Closed Candle เปิด Recovery ได้สูงสุด 1 Position              |
 //|                                                                  |
-//| NEXT RECOVERY                                                    |
-//| - Latest recovery entry becomes the new anchor.                  |
-//| - Direction is locked until the basket closes.                   |
-//| - Uses only prices[1] (the last CLOSED candle).                  |
+//| BUY RECOVERY                                                     |
+//| - buyProfit >= MinRecoveryProfit                                 |
+//| - Close[1] >= BuyAnchor + RecoveryStepPoint                      |
+//|                                                                  |
+//| SELL RECOVERY                                                    |
+//| - sellProfit >= MinRecoveryProfit                                |
+//| - Close[1] <= SellAnchor - RecoveryStepPoint                     |
+//|                                                                  |
+//| ANCHOR                                                           |
+//| - ถ้ายังไม่มี Recovery ฝั่งนั้น ใช้ Weighted Average Entry       |
+//| - ถ้ามี Recovery แล้ว ใช้ราคา Recovery ล่าสุดของฝั่งนั้น         |
 //|                                                                  |
 //| EXIT                                                             |
 //| - totalProfit >= BasketTargetProfit -> CloseAllPositions()        |
@@ -1173,15 +1182,17 @@ void ManageRecovery()
    int recoveryBuyCount = 0;
    int recoverySellCount = 0;
 
-   long latestRecoveryTime = 0;
-   double latestRecoveryPrice = 0;
-   int latestRecoveryDirection = 0;
-
    double buyVolume = 0;
    double sellVolume = 0;
 
    double buyOpenValue = 0;
    double sellOpenValue = 0;
+
+   long latestRecoveryBuyTime = 0;
+   long latestRecoverySellTime = 0;
+
+   double latestRecoveryBuyPrice = 0;
+   double latestRecoverySellPrice = 0;
 
 
    //===============================================================
@@ -1189,8 +1200,7 @@ void ManageRecovery()
    //===============================================================
    for(int i = 0; i < PositionsTotal(); i++)
    {
-      ulong ticket =
-         PositionGetTicket(i);
+      ulong ticket = PositionGetTicket(i);
 
       if(ticket == 0)
          continue;
@@ -1236,6 +1246,9 @@ void ManageRecovery()
       totalProfit += profit;
 
 
+      //============================================================
+      // BUY
+      //============================================================
       if(type == POSITION_TYPE_BUY)
       {
          buyProfit += profit;
@@ -1244,18 +1257,23 @@ void ManageRecovery()
          buyVolume += volume;
          buyOpenValue += openPrice * volume;
 
+
          if(StringFind(comment, "Recovery BUY") >= 0)
          {
             recoveryBuyCount++;
 
-            if(positionTime > latestRecoveryTime)
+            if(positionTime > latestRecoveryBuyTime)
             {
-               latestRecoveryTime = positionTime;
-               latestRecoveryPrice = openPrice;
-               latestRecoveryDirection = 1;
+               latestRecoveryBuyTime = positionTime;
+               latestRecoveryBuyPrice = openPrice;
             }
          }
       }
+
+
+      //============================================================
+      // SELL
+      //============================================================
       else
       if(type == POSITION_TYPE_SELL)
       {
@@ -1265,15 +1283,15 @@ void ManageRecovery()
          sellVolume += volume;
          sellOpenValue += openPrice * volume;
 
+
          if(StringFind(comment, "Recovery SELL") >= 0)
          {
             recoverySellCount++;
 
-            if(positionTime > latestRecoveryTime)
+            if(positionTime > latestRecoverySellTime)
             {
-               latestRecoveryTime = positionTime;
-               latestRecoveryPrice = openPrice;
-               latestRecoveryDirection = -1;
+               latestRecoverySellTime = positionTime;
+               latestRecoverySellPrice = openPrice;
             }
          }
       }
@@ -1288,8 +1306,10 @@ void ManageRecovery()
       sellCount == 0
    )
    {
-      RecoveryDirection = 0;
-      LastRecoveryPrice = 0;
+      LastRecoveryBuyPrice = 0;
+      LastRecoverySellPrice = 0;
+      LastRecoverySignalBarTime = 0;
+
       return;
    }
 
@@ -1306,10 +1326,14 @@ void ManageRecovery()
          " | SellProfit=", sellProfit
       );
 
+
       CloseAllPositions();
 
-      RecoveryDirection = 0;
-      LastRecoveryPrice = 0;
+
+      LastRecoveryBuyPrice = 0;
+      LastRecoverySellPrice = 0;
+      LastRecoverySignalBarTime = 0;
+
       return;
    }
 
@@ -1321,14 +1345,18 @@ void ManageRecovery()
       recoveryBuyCount +
       recoverySellCount;
 
+
    if(recoveryPositions >= MaxRecoveryPositions)
       return;
+
 
    if(RecoveryStepPoint <= 0)
       return;
 
+
    if(ArraySize(prices) < 2)
       return;
+
 
    if(
       buyVolume <= 0 ||
@@ -1344,230 +1372,241 @@ void ManageRecovery()
       prices[1].close;
 
 
+   datetime signalBarTime =
+      prices[1].time;
+
+
    //===============================================================
-   // INITIAL ANCHORS = weighted average entry price
+   // 1 CLOSED CANDLE = MAX 1 RECOVERY
    //===============================================================
-   double buyAnchor =
+   if(
+      LastRecoverySignalBarTime != 0 &&
+      LastRecoverySignalBarTime == signalBarTime
+   )
+      return;
+
+
+   //===============================================================
+   // ORIGINAL WEIGHTED AVERAGE ENTRY
+   //===============================================================
+   double originalBuyAnchor =
       buyOpenValue /
       buyVolume;
 
-   double sellAnchor =
+
+   double originalSellAnchor =
       sellOpenValue /
       sellVolume;
 
 
    //===============================================================
-   // RESTORE RECOVERY STATE AFTER RESTART / RE-INIT
+   // RESTORE BUY / SELL ANCHOR AFTER EA RESTART
    //===============================================================
-   if(RecoveryDirection == 0)
+   if(
+      LastRecoveryBuyPrice <= 0 &&
+      latestRecoveryBuyPrice > 0
+   )
    {
-      if(
-         recoveryBuyCount > 0 &&
-         recoverySellCount == 0
-      )
+      LastRecoveryBuyPrice =
+         latestRecoveryBuyPrice;
+   }
+
+
+   if(
+      LastRecoverySellPrice <= 0 &&
+      latestRecoverySellPrice > 0
+   )
+   {
+      LastRecoverySellPrice =
+         latestRecoverySellPrice;
+   }
+
+
+   //===============================================================
+   // SEPARATE ANCHORS
+   //===============================================================
+   double buyAnchor =
+      LastRecoveryBuyPrice > 0
+      ?
+      LastRecoveryBuyPrice
+      :
+      originalBuyAnchor;
+
+
+   double sellAnchor =
+      LastRecoverySellPrice > 0
+      ?
+      LastRecoverySellPrice
+      :
+      originalSellAnchor;
+
+
+   //===============================================================
+   // DISTANCE FROM EACH ANCHOR
+   //===============================================================
+   double buyDistance =
+      (candleClose - buyAnchor)
+      /
+      _Point;
+
+
+   double sellDistance =
+      (sellAnchor - candleClose)
+      /
+      _Point;
+
+
+   //===============================================================
+   // SIGNALS
+   //===============================================================
+   bool buySignal =
+      buyProfit >= MinRecoveryProfit &&
+      buyDistance >= RecoveryStepPoint;
+
+
+   bool sellSignal =
+      sellProfit >= MinRecoveryProfit &&
+      sellDistance >= RecoveryStepPoint;
+
+
+   //===============================================================
+   // BUY ONLY
+   //===============================================================
+   if(
+      buySignal &&
+      !sellSignal
+   )
+   {
+      if(OpenRecoveryBuy())
       {
-         RecoveryDirection = 1;
-      }
-      else
-      if(
-         recoverySellCount > 0 &&
-         recoveryBuyCount == 0
-      )
-      {
-         RecoveryDirection = -1;
-      }
-      else
-      if(
-         recoveryBuyCount > 0 &&
-         recoverySellCount > 0
-      )
-      {
+         LastRecoveryBuyPrice =
+            trade.ResultPrice();
+
+         LastRecoverySignalBarTime =
+            signalBarTime;
+
+
          Print(
-            "RECOVERY CONFLICT",
-            " | RecoveryBuy=", recoveryBuyCount,
-            " | RecoverySell=", recoverySellCount,
-            " | No new recovery"
+            "RECOVERY BUY EXECUTED",
+            " | Close=", candleClose,
+            " | Anchor=", buyAnchor,
+            " | Distance=", buyDistance,
+            " | BuyProfit=", buyProfit,
+            " | SellProfit=", sellProfit,
+            " | Basket=", totalProfit,
+            " | RecoveryBuyCount=", recoveryBuyCount + 1,
+            " | RecoverySellCount=", recoverySellCount,
+            " | NewBuyAnchor=", LastRecoveryBuyPrice
          );
-
-         return;
       }
-   }
 
-
-   if(
-      LastRecoveryPrice == 0 &&
-      recoveryPositions > 0 &&
-      latestRecoveryDirection == RecoveryDirection
-   )
-   {
-      LastRecoveryPrice =
-         latestRecoveryPrice;
+      return;
    }
 
 
    //===============================================================
-   // FIRST RECOVERY
+   // SELL ONLY
    //===============================================================
    if(
-      RecoveryDirection == 0 &&
-      recoveryPositions == 0
+      sellSignal &&
+      !buySignal
    )
    {
-      double buyDistance =
-         (candleClose - buyAnchor)
-         /
-         _Point;
+      if(OpenRecoverySell())
+      {
+         LastRecoverySellPrice =
+            trade.ResultPrice();
 
-      double sellDistance =
-         (sellAnchor - candleClose)
-         /
-         _Point;
+         LastRecoverySignalBarTime =
+            signalBarTime;
 
 
-      bool buySignal =
-         buyProfit >= MinRecoveryProfit &&
-         buyDistance >= RecoveryStepPoint;
+         Print(
+            "RECOVERY SELL EXECUTED",
+            " | Close=", candleClose,
+            " | Anchor=", sellAnchor,
+            " | Distance=", sellDistance,
+            " | BuyProfit=", buyProfit,
+            " | SellProfit=", sellProfit,
+            " | Basket=", totalProfit,
+            " | RecoveryBuyCount=", recoveryBuyCount,
+            " | RecoverySellCount=", recoverySellCount + 1,
+            " | NewSellAnchor=", LastRecoverySellPrice
+         );
+      }
 
-      bool sellSignal =
-         sellProfit >= MinRecoveryProfit &&
-         sellDistance >= RecoveryStepPoint;
+      return;
+   }
 
 
-      if(
-         buySignal &&
-         !sellSignal
-      )
+   //===============================================================
+   // BOTH SIGNALS
+   // Anchor อาจไขว้กันหลังจาก Recovery หลายรอบ
+   // จึงเลือกฝั่งที่ทะลุ RecoveryStepPoint มากกว่า
+   //===============================================================
+   if(
+      buySignal &&
+      sellSignal
+   )
+   {
+      double buyExcess =
+         buyDistance -
+         RecoveryStepPoint;
+
+
+      double sellExcess =
+         sellDistance -
+         RecoveryStepPoint;
+
+
+      if(buyExcess > sellExcess)
       {
          if(OpenRecoveryBuy())
          {
-            RecoveryDirection = 1;
-            LastRecoveryPrice = trade.ResultPrice();
+            LastRecoveryBuyPrice =
+               trade.ResultPrice();
+
+            LastRecoverySignalBarTime =
+               signalBarTime;
+
 
             Print(
-               "FIRST RECOVERY BUY",
+               "RECOVERY BUY EXECUTED",
+               " | Mode=BOTH_SIGNAL_BUY_STRONGER",
                " | Close=", candleClose,
-               " | BuyAnchor=", buyAnchor,
-               " | Distance=", buyDistance,
+               " | BuyDistance=", buyDistance,
+               " | SellDistance=", sellDistance,
                " | BuyProfit=", buyProfit,
-               " | Basket=", totalProfit,
-               " | NewAnchor=", LastRecoveryPrice
+               " | SellProfit=", sellProfit,
+               " | NewBuyAnchor=", LastRecoveryBuyPrice
             );
          }
-
-         return;
       }
-
-
-      if(
-         sellSignal &&
-         !buySignal
-      )
+      else
+      if(sellExcess > buyExcess)
       {
          if(OpenRecoverySell())
          {
-            RecoveryDirection = -1;
-            LastRecoveryPrice = trade.ResultPrice();
+            LastRecoverySellPrice =
+               trade.ResultPrice();
+
+            LastRecoverySignalBarTime =
+               signalBarTime;
+
 
             Print(
-               "FIRST RECOVERY SELL",
+               "RECOVERY SELL EXECUTED",
+               " | Mode=BOTH_SIGNAL_SELL_STRONGER",
                " | Close=", candleClose,
-               " | SellAnchor=", sellAnchor,
-               " | Distance=", sellDistance,
+               " | BuyDistance=", buyDistance,
+               " | SellDistance=", sellDistance,
+               " | BuyProfit=", buyProfit,
                " | SellProfit=", sellProfit,
-               " | Basket=", totalProfit,
-               " | NewAnchor=", LastRecoveryPrice
+               " | NewSellAnchor=", LastRecoverySellPrice
             );
          }
-
-         return;
       }
 
-
-      return;
-   }
-
-
-   //===============================================================
-   // BUY RECOVERY LOCK
-   // Latest Recovery BUY price is the new anchor.
-   //===============================================================
-   if(RecoveryDirection == 1)
-   {
-      if(buyProfit < MinRecoveryProfit)
-         return;
-
-      if(LastRecoveryPrice <= 0)
-         return;
-
-
-      double distance =
-         (candleClose - LastRecoveryPrice)
-         /
-         _Point;
-
-
-      if(distance < RecoveryStepPoint)
-         return;
-
-
-      if(OpenRecoveryBuy())
-      {
-         LastRecoveryPrice =
-            trade.ResultPrice();
-
-         Print(
-            "RECOVERY BUY ADDED",
-            " | Close=", candleClose,
-            " | Distance=", distance,
-            " | BuyProfit=", buyProfit,
-            " | Basket=", totalProfit,
-            " | RecoveryCount=", recoveryPositions + 1,
-            " | NewAnchor=", LastRecoveryPrice
-         );
-      }
-
-      return;
-   }
-
-
-   //===============================================================
-   // SELL RECOVERY LOCK
-   // Latest Recovery SELL price is the new anchor.
-   //===============================================================
-   if(RecoveryDirection == -1)
-   {
-      if(sellProfit < MinRecoveryProfit)
-         return;
-
-      if(LastRecoveryPrice <= 0)
-         return;
-
-
-      double distance =
-         (LastRecoveryPrice - candleClose)
-         /
-         _Point;
-
-
-      if(distance < RecoveryStepPoint)
-         return;
-
-
-      if(OpenRecoverySell())
-      {
-         LastRecoveryPrice =
-            trade.ResultPrice();
-
-         Print(
-            "RECOVERY SELL ADDED",
-            " | Close=", candleClose,
-            " | Distance=", distance,
-            " | SellProfit=", sellProfit,
-            " | Basket=", totalProfit,
-            " | RecoveryCount=", recoveryPositions + 1,
-            " | NewAnchor=", LastRecoveryPrice
-         );
-      }
 
       return;
    }
